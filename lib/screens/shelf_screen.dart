@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../data/book_catalog.dart';
 import '../models/book.dart';
+import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
 import 'paywall_screen.dart';
 import 'reader_screen.dart';
 
 /// Home: the bookshelf, with an all-access banner on top.
 class ShelfScreen extends StatelessWidget {
-  const ShelfScreen({super.key, required this.entitlements});
+  const ShelfScreen({super.key, required this.entitlements, this.auth});
 
   final EntitlementService entitlements;
+  final AuthService? auth;
 
   void _openBook(BuildContext context, Book book) {
     Navigator.of(context).push(MaterialPageRoute(
@@ -32,9 +34,17 @@ class ShelfScreen extends StatelessWidget {
         builder: (context, _) {
           return CustomScrollView(
             slivers: [
-              const SliverAppBar.large(
-                title: Text('Story Shelf'),
+              SliverAppBar.large(
+                title: const Text('Story Shelf'),
                 centerTitle: true,
+                actions: [
+                  if (auth != null)
+                    IconButton(
+                      icon: const Icon(Icons.logout_rounded),
+                      tooltip: 'Sign out',
+                      onPressed: () => auth!.signOut(),
+                    ),
+                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(

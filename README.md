@@ -55,6 +55,33 @@ The APK lands in `build/app/outputs/flutter-apk/`.
 
 ---
 
+## 1c. Turning on real sign-in (Firebase Authentication)
+
+The app now opens with a **landing page → a 2-slide "what is this app"
+explainer → an email/password sign-in screen**, backed by **Firebase
+Authentication**. It ships with placeholder Firebase config, so it builds
+and runs today — sign-in/sign-up will just fail with an "API key not
+valid" error until you plug in a real project:
+
+1. Create a project at https://console.firebase.google.com.
+2. **Build → Authentication → Get started → Sign-in method** → enable
+   **Email/Password**.
+3. **Project settings → General → Your apps** → add an Android app (package
+   name `rs.stasa.kids_books`, matching the workflow's `--org rs.stasa`).
+4. Copy the config values shown (API key, App ID, Messaging sender ID,
+   Project ID) into `lib/firebase_options.dart`, replacing the
+   `YOUR_FIREBASE_*` placeholders in the `android` `FirebaseOptions`.
+
+Unlike the RevenueCat/Play key elsewhere in this app, Firebase's client
+config isn't a secret — it's meant to ship inside the app. Access is
+controlled by Firebase Auth and security rules, not by hiding these values,
+so it's fine to commit real ones here.
+
+Once signed in, tap the sign-out icon in the shelf's app bar to go back
+through landing → onboarding → login again.
+
+---
+
 ## 2. What's inside
 
 ```
@@ -63,9 +90,14 @@ lib/
   data/book_catalog.dart                  the 3 sample books (+ sub price label)
   services/entitlement_service.dart       access rules + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
+  services/auth_service.dart              Firebase email/password sign-in
+  screens/landing_screen.dart             first screen: app name + tagline
+  screens/onboarding_screen.dart          2-slide "what is this app" explainer
+  screens/login_screen.dart               email/password sign in & sign up
   screens/shelf_screen.dart               home shelf + subscribe banner
   screens/reader_screen.dart              page reader + paywall wall
   screens/paywall_screen.dart             buy-book vs subscribe
+  firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
 ```
 

@@ -4,13 +4,17 @@ publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.4.0 <4.0.0"
+  sdk: ">=3.6.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.2      # used only by the demo entitlement store
+
+  # Sign-in (landing → onboarding → login flow). See lib/firebase_options.dart.
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
 
   # Google Play Billing, wrapped by RevenueCat (handles subscriptions,
   # one-time products, restore, and entitlements). The app runs in demo mode
