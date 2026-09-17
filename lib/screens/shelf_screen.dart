@@ -4,6 +4,7 @@ import '../data/book_catalog.dart';
 import '../models/book.dart';
 import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
+import 'landing_screen.dart';
 import 'paywall_screen.dart';
 import 'reader_screen.dart';
 
@@ -26,25 +27,38 @@ class ShelfScreen extends StatelessWidget {
     ));
   }
 
+  // Signing in (demo or Firebase) ends with pushAndRemoveUntil to Shelf,
+  // which clears the landing/onboarding/login stack — including the root
+  // route's auth listener that would otherwise swap Shelf back to Landing
+  // on sign-out. So sign-out has to navigate explicitly, the same way.
+  Future<void> _signOut(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    await auth?.signOut();
+    if (!context.mounted) return;
+    navigator.pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => LandingScreen(entitlements: entitlements, auth: auth!),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: _ShelfDrawer(
+        entitlements: entitlements,
+        onSubscribeTap: () => _openSubscribe(context),
+        onSignOutTap: auth == null ? null : () => _signOut(context),
+      ),
       body: ListenableBuilder(
         listenable: entitlements,
         builder: (context, _) {
           return CustomScrollView(
             slivers: [
-              SliverAppBar.large(
-                title: const Text('Story Shelf'),
+              const SliverAppBar.large(
+                title: Text('Story Shelf'),
                 centerTitle: true,
-                actions: [
-                  if (auth != null)
-                    IconButton(
-                      icon: const Icon(Icons.logout_rounded),
-                      tooltip: 'Sign out',
-                      onPressed: () => auth!.signOut(),
-                    ),
-                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -73,6 +87,86 @@ class ShelfScreen extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ShelfDrawer extends StatelessWidget {
+  const _ShelfDrawer({
+    required this.entitlements,
+    required this.onSubscribeTap,
+    this.onSignOutTap,
+  });
+
+  final EntitlementService entitlements;
+  final VoidCallback onSubscribeTap;
+  final VoidCallback? onSignOutTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final subscribed = entitlements.subscriptionActive;
+
+    return Drawer(
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+              color: scheme.primaryContainer,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('📚', style: TextStyle(fontSize: 36)),
+                  const SizedBox(height: 10),
+                  const Text('Story Shelf',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(
+                    subscribed ? 'All Access active' : 'Free plan',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.auto_stories_rounded),
+              title: const Text('Shelf'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: Icon(subscribed
+                  ? Icons.verified_rounded
+                  : Icons.workspace_premium_rounded),
+              title: Text(subscribed ? 'All Access' : 'Subscribe'),
+              onTap: () {
+                Navigator.pop(context);
+                onSubscribeTap();
+              },
+            ),
+            if (onSignOutTap != null) ...[
+              const Spacer(),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded),
+                title: const Text('Sign out'),
+                onTap: () {
+                  Navigator.pop(context);
+                  onSignOutTap!();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ),
       ),
     );
   }
