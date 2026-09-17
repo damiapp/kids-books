@@ -1,0 +1,27 @@
+name: kids_books
+description: A kids' picture-book platform — buy a book, or subscribe for all books plus every new release.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.3.2      # used only by the demo entitlement store
+
+  # Google Play Billing, wrapped by RevenueCat (handles subscriptions,
+  # one-time products, restore, and entitlements). The app runs in demo mode
+  # until you switch main.dart over to the RevenueCat service.
+  purchases_flutter: ^8.0.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # When you replace emoji placeholders with real art:
+  # assets:
+  #   - assets/books/
