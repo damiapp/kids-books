@@ -28,6 +28,8 @@ class Book {
     required this.playProductId,
     required this.priceLabel,
     required this.pages,
+    required this.ageRange,
+    required this.genres,
     this.previewPages = 2,
   });
 
@@ -36,6 +38,12 @@ class Book {
   final String subtitle;
   final String coverEmoji;
   final Color coverColor;
+
+  /// Recommended reader age, e.g. "1-3", "3-6".
+  final String ageRange;
+
+  /// e.g. ["Animals", "Nature"]. A book can belong to more than one.
+  final List<String> genres;
 
   /// The one-time (non-consumable) product id you create in Google Play Console
   /// for buying this book on its own.

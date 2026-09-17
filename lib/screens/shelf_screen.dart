@@ -148,6 +148,27 @@ class _AllAccessBadge extends StatelessWidget {
   }
 }
 
+class _Tag extends StatelessWidget {
+  const _Tag({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
 class _BookRow extends StatelessWidget {
   const _BookRow({
     required this.book,
@@ -202,6 +223,15 @@ class _BookRow extends StatelessWidget {
                     Text(book.subtitle,
                         style: const TextStyle(
                             fontSize: 13, color: Color(0xFF7A756B))),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _Tag(label: 'Ages ${book.ageRange}'),
+                        for (final genre in book.genres) _Tag(label: genre),
+                      ],
+                    ),
                   ],
                 ),
               ),

@@ -16,6 +16,8 @@ class BookCatalog {
       subtitle: 'Animals and their names',
       coverEmoji: '🦁',
       coverColor: Color(0xFFFFE1A8),
+      ageRange: '3-6',
+      genres: ['Animals', 'Nature'],
       playProductId: 'book_animals',
       priceLabel: '€2.99',
       pages: [
@@ -33,6 +35,8 @@ class BookCatalog {
       subtitle: 'Learn your first colours',
       coverEmoji: '🌈',
       coverColor: Color(0xFFE6DDF2),
+      ageRange: '1-3',
+      genres: ['Learning', 'Colours'],
       playProductId: 'book_colours',
       priceLabel: '€2.99',
       pages: [
@@ -49,6 +53,8 @@ class BookCatalog {
       subtitle: 'Numbers one to five',
       coverEmoji: '🔢',
       coverColor: Color(0xFFD8F0CE),
+      ageRange: '2-4',
+      genres: ['Learning', 'Numbers'],
       playProductId: 'book_numbers',
       priceLabel: '€2.99',
       pages: [

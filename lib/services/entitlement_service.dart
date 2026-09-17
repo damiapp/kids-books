@@ -86,4 +86,20 @@ class DemoEntitlementService extends EntitlementService {
 
   @override
   Future<void> restore() => init();
+
+  /// Overwrites local state to match a built-in demo account (see
+  /// AuthService / DemoAccount) — used only by the mock sign-in flow.
+  Future<void> applyDemoPreset({
+    required bool subscriptionActive,
+    required Set<String> ownedBookIds,
+  }) async {
+    _sub = subscriptionActive;
+    _owned
+      ..clear()
+      ..addAll(ownedBookIds);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_subKey, _sub);
+    await prefs.setString(_ownedKey, jsonEncode(_owned.toList()));
+    notifyListeners();
+  }
 }

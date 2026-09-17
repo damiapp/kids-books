@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/demo_accounts.dart';
 import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
 import 'shelf_screen.dart';
@@ -35,6 +36,16 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _useDemoAccount(DemoAccount account) {
+    _emailController.text = account.email;
+    _passwordController.text = account.password;
+    setState(() {
+      _isCreatingAccount = false;
+      _error = null;
+    });
+    _submit();
+  }
+
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -58,6 +69,16 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       return;
     }
+
+    final demo = widget.auth.activeDemoAccount;
+    if (demo != null && widget.entitlements is DemoEntitlementService) {
+      await (widget.entitlements as DemoEntitlementService).applyDemoPreset(
+        subscriptionActive: demo.subscriptionActive,
+        ownedBookIds: demo.ownedBookIds,
+      );
+    }
+
+    if (!mounted) return;
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
@@ -165,6 +186,37 @@ class _LoginScreenState extends State<LoginScreen> {
                         : 'New here? Create an account',
                   ),
                 ),
+                const SizedBox(height: 28),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: scheme.outlineVariant)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('or try it instantly',
+                          style: TextStyle(
+                              fontSize: 13, color: scheme.onSurfaceVariant)),
+                    ),
+                    Expanded(child: Divider(color: scheme.outlineVariant)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                for (final account in demoAccounts) ...[
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
+                    ),
+                    onPressed:
+                        _isSubmitting ? null : () => _useDemoAccount(account),
+                    child: Text(
+                      account.subscriptionActive
+                          ? '👑  ${account.label}'
+                          : '🙂  ${account.label}',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ],
             ),
           ),

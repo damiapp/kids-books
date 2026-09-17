@@ -80,14 +80,28 @@ so it's fine to commit real ones here.
 Once signed in, tap the sign-out icon in the shelf's app bar to go back
 through landing → onboarding → login again.
 
+**Try it now without any Firebase setup** — the login screen has two
+"instant" demo accounts (`lib/data/demo_accounts.dart`) that bypass
+Firebase entirely and set local entitlements to match:
+
+| Account | Email | Password | Entitlements |
+|---|---|---|---|
+| 👑 All Access subscriber | `subscriber@demo.storyshelf.app` | `demo1234` | Subscription active — every book unlocked |
+| 🙂 Brand-new user | `newuser@demo.storyshelf.app` | `demo1234` | Nothing owned, no subscription |
+
+Tap either button on the login screen to sign in instantly, or type the
+credentials by hand. These only work for sign-in, not the "create account"
+flow, and never touch your Firebase project.
+
 ---
 
 ## 2. What's inside
 
 ```
 lib/
-  models/book.dart                        Book + BookPage
+  models/book.dart                        Book (+ ageRange, genres) + BookPage
   data/book_catalog.dart                  the 3 sample books (+ sub price label)
+  data/demo_accounts.dart                 instant-login demo accounts (§1c)
   services/entitlement_service.dart       access rules + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
   services/auth_service.dart              Firebase email/password sign-in
