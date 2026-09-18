@@ -5,7 +5,7 @@ publish_to: "none"
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.1.0+6
+version: 0.2.0+7
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -24,6 +24,9 @@ dependencies:
   # one-time products, restore, and entitlements). The app runs in demo mode
   # until you switch main.dart over to the RevenueCat service.
   purchases_flutter: ^8.0.0
+
+  # Read-aloud narration in the reader — device TTS, fully offline.
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_lints: ^4.0.0

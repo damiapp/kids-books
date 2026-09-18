@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/book.dart';
 import '../services/entitlement_service.dart';
+import '../services/narration_service.dart';
 import 'paywall_screen.dart';
 
 /// Swipe through one book. Preview pages are free; the first locked page shows
@@ -18,11 +19,13 @@ class ReaderScreen extends StatefulWidget {
 
 class _ReaderScreenState extends State<ReaderScreen> {
   final _controller = PageController();
+  final _narration = NarrationService();
   int _index = 0;
 
   @override
   void dispose() {
     _controller.dispose();
+    _narration.dispose();
     super.dispose();
   }
 
@@ -33,13 +36,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
     ));
   }
 
+  void _toggleSpeak(BookPage page) {
+    if (_narration.isSpeaking) {
+      _narration.stop();
+    } else {
+      _narration.speak('${page.word}. ${page.text}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final book = widget.book;
 
     return Scaffold(
       body: ListenableBuilder(
-        listenable: widget.entitlements,
+        listenable: Listenable.merge([widget.entitlements, _narration]),
         builder: (context, _) {
           return SafeArea(
             child: Column(
@@ -49,7 +60,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          _narration.stop();
+                          Navigator.of(context).pop();
+                        },
                         icon: const Icon(Icons.close_rounded),
                       ),
                       Expanded(
@@ -76,12 +90,20 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
-                    onPageChanged: (i) => setState(() => _index = i),
+                    onPageChanged: (i) {
+                      _narration.stop();
+                      setState(() => _index = i);
+                    },
                     itemCount: book.pages.length,
                     itemBuilder: (context, i) {
                       final canRead = widget.entitlements.canRead(book, i);
+                      final page = book.pages[i];
                       return canRead
-                          ? _PageView(page: book.pages[i])
+                          ? _PageView(
+                              page: page,
+                              isSpeaking: _narration.isSpeaking,
+                              onSpeak: () => _toggleSpeak(page),
+                            )
                           : _LockedView(book: book, onUnlock: _openPaywall);
                     },
                   ),
@@ -96,9 +118,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
 }
 
 class _PageView extends StatelessWidget {
-  const _PageView({required this.page});
+  const _PageView({
+    required this.page,
+    required this.isSpeaking,
+    required this.onSpeak,
+  });
 
   final BookPage page;
+  final bool isSpeaking;
+  final VoidCallback onSpeak;
 
   @override
   Widget build(BuildContext context) {
@@ -108,32 +136,47 @@ class _PageView extends StatelessWidget {
         color: page.color,
         borderRadius: BorderRadius.circular(32),
       ),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(page.emoji, style: const TextStyle(fontSize: 120)),
-            const SizedBox(height: 16),
-            Text(
-              page.word,
-              style: const TextStyle(
-                fontSize: 44,
-                fontWeight: FontWeight.w900,
-                color: Color(0xFF3D3A34),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(page.emoji, style: const TextStyle(fontSize: 120)),
+                const SizedBox(height: 16),
+                Text(
+                  page.word,
+                  style: const TextStyle(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF3D3A34),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Text(
+                    page.text,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 18, height: 1.4, color: Color(0xFF534F48)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 16,
+            right: 16,
+            child: IconButton.filled(
+              onPressed: onSpeak,
+              tooltip: isSpeaking ? 'Stop reading' : 'Read aloud',
+              icon: Icon(
+                isSpeaking ? Icons.stop_rounded : Icons.volume_up_rounded,
               ),
             ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Text(
-                page.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 18, height: 1.4, color: Color(0xFF534F48)),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
