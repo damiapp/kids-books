@@ -8,22 +8,40 @@ import 'landing_screen.dart';
 import 'paywall_screen.dart';
 import 'reader_screen.dart';
 
-/// Home: the bookshelf, with an all-access banner on top.
-class ShelfScreen extends StatelessWidget {
+/// Home: the bookshelf, with an all-access banner, search, and genre/age
+/// filters on top.
+class ShelfScreen extends StatefulWidget {
   const ShelfScreen({super.key, required this.entitlements, this.auth});
 
   final EntitlementService entitlements;
   final AuthService? auth;
 
+  @override
+  State<ShelfScreen> createState() => _ShelfScreenState();
+}
+
+class _ShelfScreenState extends State<ShelfScreen> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  String? _selectedGenre;
+  String? _selectedAge;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _openBook(BuildContext context, Book book) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ReaderScreen(entitlements: entitlements, book: book),
+      builder: (_) =>
+          ReaderScreen(entitlements: widget.entitlements, book: book),
     ));
   }
 
   void _openSubscribe(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PaywallScreen(entitlements: entitlements),
+      builder: (_) => PaywallScreen(entitlements: widget.entitlements),
     ));
   }
 
@@ -33,26 +51,51 @@ class ShelfScreen extends StatelessWidget {
   // on sign-out. So sign-out has to navigate explicitly, the same way.
   Future<void> _signOut(BuildContext context) async {
     final navigator = Navigator.of(context);
-    await auth?.signOut();
+    await widget.auth?.signOut();
     if (!context.mounted) return;
     navigator.pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => LandingScreen(entitlements: entitlements, auth: auth!),
+        builder: (_) => LandingScreen(
+            entitlements: widget.entitlements, auth: widget.auth!),
       ),
       (route) => false,
     );
   }
 
+  List<Book> get _filteredBooks {
+    final query = _query.trim().toLowerCase();
+    return BookCatalog.books.where((book) {
+      if (_selectedGenre != null && !book.genres.contains(_selectedGenre)) {
+        return false;
+      }
+      if (_selectedAge != null && book.ageRange != _selectedAge) {
+        return false;
+      }
+      if (query.isNotEmpty &&
+          !book.title.toLowerCase().contains(query) &&
+          !book.subtitle.toLowerCase().contains(query)) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final genres = {for (final b in BookCatalog.books) ...b.genres}.toList()
+      ..sort();
+    final ages = {for (final b in BookCatalog.books) b.ageRange}.toList()
+      ..sort();
+    final books = _filteredBooks;
+
     return Scaffold(
       drawer: _ShelfDrawer(
-        entitlements: entitlements,
+        entitlements: widget.entitlements,
         onSubscribeTap: () => _openSubscribe(context),
-        onSignOutTap: auth == null ? null : () => _signOut(context),
+        onSignOutTap: widget.auth == null ? null : () => _signOut(context),
       ),
       body: ListenableBuilder(
-        listenable: entitlements,
+        listenable: widget.entitlements,
         builder: (context, _) {
           return CustomScrollView(
             slivers: [
@@ -63,30 +106,135 @@ class ShelfScreen extends StatelessWidget {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: entitlements.subscriptionActive
+                  child: widget.entitlements.subscriptionActive
                       ? const _AllAccessBadge()
                       : _SubscribeBanner(onTap: () => _openSubscribe(context)),
                 ),
               ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
-                sliver: SliverList.separated(
-                  itemCount: BookCatalog.books.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
-                  itemBuilder: (context, i) {
-                    final book = BookCatalog.books[i];
-                    return _BookRow(
-                      book: book,
-                      owned: entitlements.hasFullAccess(book.id),
-                      subscribed: entitlements.subscriptionActive,
-                      onTap: () => _openBook(context, book),
-                    );
-                  },
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _query = value),
+                    decoration: InputDecoration(
+                      hintText: 'Search books',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.clear_rounded),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                            ),
+                      filled: true,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
                 ),
               ),
+              SliverToBoxAdapter(
+                child: _FilterRow(
+                  label: 'Genre',
+                  options: genres,
+                  selected: _selectedGenre,
+                  onSelected: (value) =>
+                      setState(() => _selectedGenre = value),
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: _FilterRow(
+                  label: 'Age',
+                  options: ages,
+                  optionLabel: (age) => 'Ages $age',
+                  selected: _selectedAge,
+                  onSelected: (value) => setState(() => _selectedAge = value),
+                ),
+              ),
+              if (books.isEmpty)
+                const SliverPadding(
+                  padding: EdgeInsets.fromLTRB(16, 32, 16, 16),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: Text(
+                        'No books match — try a different filter.',
+                        style: TextStyle(fontSize: 15),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                  sliver: SliverList.separated(
+                    itemCount: books.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 14),
+                    itemBuilder: (context, i) {
+                      final book = books[i];
+                      return _BookRow(
+                        book: book,
+                        owned: widget.entitlements.hasFullAccess(book.id),
+                        subscribed: widget.entitlements.subscriptionActive,
+                        onTap: () => _openBook(context, book),
+                      );
+                    },
+                  ),
+                ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _FilterRow extends StatelessWidget {
+  const _FilterRow({
+    required this.label,
+    required this.options,
+    required this.selected,
+    required this.onSelected,
+    this.optionLabel,
+  });
+
+  final String label;
+  final List<String> options;
+  final String? selected;
+  final ValueChanged<String?> onSelected;
+  final String Function(String option)? optionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (options.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 42,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8, top: 8),
+            child: ChoiceChip(
+              label: Text('All $label'),
+              selected: selected == null,
+              onSelected: (_) => onSelected(null),
+            ),
+          ),
+          for (final option in options)
+            Padding(
+              padding: const EdgeInsets.only(right: 8, top: 8),
+              child: ChoiceChip(
+                label: Text(optionLabel?.call(option) ?? option),
+                selected: selected == option,
+                onSelected: (_) => onSelected(selected == option ? null : option),
+              ),
+            ),
+        ],
       ),
     );
   }
