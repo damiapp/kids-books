@@ -1,7 +1,11 @@
 name: kids_books
 description: A kids' picture-book platform — buy a book, or subscribe for all books plus every new release.
 publish_to: "none"
-version: 1.0.0+1
+# Still pre-release. Convention while in dev: bump PATCH for small fixes,
+# MINOR when a roadmap phase ships (see README), and always bump the build
+# number (+N, after the +) on every push — that's what makes each APK
+# install as an update on a phone instead of needing an uninstall first.
+version: 0.1.0+6
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
