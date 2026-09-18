@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/demo_accounts.dart';
 import '../services/auth_service.dart';
+import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/reading_progress_service.dart';
 import 'shelf_screen.dart';
@@ -13,11 +14,13 @@ class LoginScreen extends StatefulWidget {
     required this.entitlements,
     required this.auth,
     required this.progress,
+    required this.energy,
   });
 
   final EntitlementService entitlements;
   final AuthService auth;
   final ReadingProgressService progress;
+  final EnergyService energy;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -77,7 +80,6 @@ class _LoginScreenState extends State<LoginScreen> {
     if (demo != null && widget.entitlements is DemoEntitlementService) {
       await (widget.entitlements as DemoEntitlementService).applyDemoPreset(
         subscriptionActive: demo.subscriptionActive,
-        ownedBookIds: demo.ownedBookIds,
       );
     }
 
@@ -89,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
           entitlements: widget.entitlements,
           auth: widget.auth,
           progress: widget.progress,
+          energy: widget.energy,
         ),
       ),
       (route) => false,

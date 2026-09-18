@@ -1,14 +1,13 @@
 /// Built-in accounts that work without a real Firebase project — handy for
 /// trying the app, demos, or App Store review before you've wired up
 /// production sign-in (see README §1c). Signing in with one of these never
-/// touches Firebase; it just sets local demo entitlements to match.
+/// touches Firebase; it just sets local entitlements to match.
 class DemoAccount {
   const DemoAccount({
     required this.email,
     required this.password,
     required this.label,
     required this.subscriptionActive,
-    required this.ownedBookIds,
   });
 
   final String email;
@@ -18,23 +17,20 @@ class DemoAccount {
   final String label;
 
   final bool subscriptionActive;
-  final Set<String> ownedBookIds;
 }
 
 const List<DemoAccount> demoAccounts = [
   DemoAccount(
     email: 'subscriber@demo.storyshelf.app',
     password: 'demo1234',
-    label: 'All Access subscriber',
+    label: 'All Access subscriber (unlimited energy)',
     subscriptionActive: true,
-    ownedBookIds: {},
   ),
   DemoAccount(
     email: 'newuser@demo.storyshelf.app',
     password: 'demo1234',
-    label: 'Brand-new user',
+    label: 'Brand-new user (limited energy)',
     subscriptionActive: false,
-    ownedBookIds: {},
   ),
 ];
 

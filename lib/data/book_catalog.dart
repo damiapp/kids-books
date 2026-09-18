@@ -3,11 +3,11 @@ import '../models/book.dart';
 
 /// The catalog. Bundled for now so the app works offline.
 ///
-/// To keep your "2 new books a month" promise WITHOUT shipping a new APK each
-/// time, move this list to a JSON manifest served from Cloudflare R2 (or
-/// Supabase) and fetch it at startup. Subscribers get new books automatically,
-/// because access is decided by "is the subscription active?" — not by which
-/// books shipped inside the app.
+/// To ship new lessons WITHOUT a new APK release, move this list to a JSON
+/// manifest served from Cloudflare R2 (or Supabase) and fetch it at
+/// startup — access is decided by energy + subscription, not by which
+/// lessons shipped inside the app, so new ones show up for everyone
+/// immediately.
 class BookCatalog {
   static const List<Book> books = [
     Book(
@@ -18,8 +18,6 @@ class BookCatalog {
       coverColor: Color(0xFFFFE1A8),
       ageRange: '3-6',
       genres: ['Animals', 'Nature'],
-      playProductId: 'book_animals',
-      priceLabel: '€2.99',
       pages: [
         BookPage(emoji: '🦁', word: 'Lion', text: 'The lion is the king of the animals.', color: Color(0xFFFFE1A8)),
         BookPage(emoji: '🐘', word: 'Elephant', text: 'The elephant is big and grey.', color: Color(0xFFD6E4EA)),
@@ -37,8 +35,6 @@ class BookCatalog {
       coverColor: Color(0xFFE6DDF2),
       ageRange: '1-3',
       genres: ['Learning', 'Colours'],
-      playProductId: 'book_colours',
-      priceLabel: '€2.99',
       pages: [
         BookPage(emoji: '🍎', word: 'Red', text: 'The apple is red.', color: Color(0xFFF6D3D3)),
         BookPage(emoji: '☀️', word: 'Yellow', text: 'The sun is yellow.', color: Color(0xFFFFF0BE)),
@@ -55,8 +51,6 @@ class BookCatalog {
       coverColor: Color(0xFFD8F0CE),
       ageRange: '2-4',
       genres: ['Learning', 'Numbers'],
-      playProductId: 'book_numbers',
-      priceLabel: '€2.99',
       pages: [
         BookPage(emoji: '🍏', word: 'One', text: 'One green apple.', color: Color(0xFFD8F0CE)),
         BookPage(emoji: '🐟🐟', word: 'Two', text: 'Two little fish.', color: Color(0xFFD7EBF5)),

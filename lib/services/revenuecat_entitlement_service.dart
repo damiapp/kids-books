@@ -1,22 +1,20 @@
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
-import '../data/book_catalog.dart';
-import '../models/book.dart';
 import 'entitlement_service.dart';
 
 /// Production entitlements via RevenueCat (which runs on Google Play Billing).
 ///
 /// SETUP (see README for the full walkthrough):
-///  1. Play Console → create one "in-app product" per book, id = book.playProductId
-///     (book_animals, book_colours, …), and one Subscription with a monthly base plan.
+///  1. Play Console → create one Subscription with a monthly base plan.
 ///  2. RevenueCat → add your Android app + Play credentials.
 ///  3. RevenueCat → create entitlement `all_access`, attach it to the subscription.
 ///  4. RevenueCat → create an Offering whose current package is that subscription.
 ///  5. main.dart → use this class with your public `goog_…` key.
 ///
-/// Individual book ownership is read straight from purchase history, so books
-/// don't each need their own entitlement.
+/// Subscribers get unlimited energy (see EnergyService); everyone else
+/// spends energy per lesson, tracked purely locally — there's nothing to
+/// buy per lesson, so there's nothing else to sync from the store.
 class RevenueCatEntitlementService extends EntitlementService {
   RevenueCatEntitlementService({
     required this.apiKey,
@@ -27,13 +25,9 @@ class RevenueCatEntitlementService extends EntitlementService {
   final String allAccessEntitlementId;
 
   bool _sub = false;
-  final Set<String> _owned = {};
 
   @override
   bool get subscriptionActive => _sub;
-
-  @override
-  Set<String> get ownedBookIds => Set.unmodifiable(_owned);
 
   @override
   Future<void> init() async {
@@ -45,34 +39,7 @@ class RevenueCatEntitlementService extends EntitlementService {
 
   void _apply(CustomerInfo info) {
     _sub = info.entitlements.active.containsKey(allAccessEntitlementId);
-
-    // Map bought product ids back to book ids.
-    final purchased = info.allPurchasedProductIdentifiers.toSet();
-    _owned
-      ..clear()
-      ..addAll(
-        BookCatalog.books
-            .where((b) => purchased.contains(b.playProductId))
-            .map((b) => b.id),
-      );
     notifyListeners();
-  }
-
-  @override
-  Future<bool> purchaseBook(Book book) async {
-    final products = await Purchases.getProducts(
-      [book.playProductId],
-      productCategory: ProductCategory.nonSubscription,
-    );
-    if (products.isEmpty) return false;
-    try {
-      await Purchases.purchaseStoreProduct(products.first);
-    } on PlatformException {
-      _apply(await Purchases.getCustomerInfo());
-      return _owned.contains(book.id);
-    }
-    _apply(await Purchases.getCustomerInfo());
-    return _owned.contains(book.id);
   }
 
   @override

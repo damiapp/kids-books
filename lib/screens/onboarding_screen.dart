@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/reading_progress_service.dart';
 import 'login_screen.dart';
@@ -19,16 +20,17 @@ class _OnboardingSlide {
 
 const _slides = [
   _OnboardingSlide(
-    emoji: '📖',
-    title: 'Buy a book, or unlock them all',
-    description: 'Pick up a single picture book, or subscribe for All '
-        'Access to every book on the shelf — plus every new one we add.',
+    emoji: '🎧',
+    title: 'Listen, then try it yourself',
+    description: 'Every lesson teaches a word, then asks your child to tap '
+        'the picture that matches what they just heard — learning by doing.',
   ),
   _OnboardingSlide(
-    emoji: '✨',
-    title: 'Fresh stories every month',
-    description: 'Subscribers get new books the moment they land — no '
-        'extra purchase, no waiting. Preview pages are always free to try.',
+    emoji: '⚡',
+    title: 'Free energy every day',
+    description: 'Each lesson uses a little energy, which refills over '
+        'time — or go All Access for unlimited energy and new lessons '
+        'the moment they land.',
   ),
 ];
 
@@ -40,11 +42,13 @@ class OnboardingScreen extends StatefulWidget {
     required this.entitlements,
     required this.auth,
     required this.progress,
+    required this.energy,
   });
 
   final EntitlementService entitlements;
   final AuthService auth;
   final ReadingProgressService progress;
+  final EnergyService energy;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -71,6 +75,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         entitlements: widget.entitlements,
         auth: widget.auth,
         progress: widget.progress,
+        energy: widget.energy,
       ),
     ));
   }

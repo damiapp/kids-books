@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/reading_progress_service.dart';
 import 'onboarding_screen.dart';
@@ -12,11 +13,13 @@ class LandingScreen extends StatelessWidget {
     required this.entitlements,
     required this.auth,
     required this.progress,
+    required this.energy,
   });
 
   final EntitlementService entitlements;
   final AuthService auth;
   final ReadingProgressService progress;
+  final EnergyService energy;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +48,7 @@ class LandingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Magical picture books for curious kids.',
+                'Fun daily lessons for curious kids, 3+.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: scheme.onSurfaceVariant),
               ),
@@ -65,6 +68,7 @@ class LandingScreen extends StatelessWidget {
                         entitlements: entitlements,
                         auth: auth,
                         progress: progress,
+                        energy: energy,
                       ),
                     ));
                   },

@@ -1,11 +1,11 @@
 name: kids_books
-description: A kids' picture-book platform — buy a book, or subscribe for all books plus every new release.
+description: A Duolingo-style lesson app for kids 3+ — listen, then tap the match. Free energy refills over time; All Access removes the cap.
 publish_to: "none"
 # Still pre-release. Convention while in dev: bump PATCH for small fixes,
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.3.0+8
+version: 0.4.0+9
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -20,8 +20,8 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
 
-  # Google Play Billing, wrapped by RevenueCat (handles subscriptions,
-  # one-time products, restore, and entitlements). The app runs in demo mode
+  # Google Play Billing, wrapped by RevenueCat (handles the All Access
+  # subscription, restore, and entitlements). The app runs in demo mode
   # until you switch main.dart over to the RevenueCat service.
   purchases_flutter: ^8.0.0
 

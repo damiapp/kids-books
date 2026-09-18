@@ -3,24 +3,27 @@ import 'package:flutter/material.dart';
 import '../data/book_catalog.dart';
 import '../models/book.dart';
 import '../services/auth_service.dart';
+import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/reading_progress_service.dart';
 import 'landing_screen.dart';
 import 'paywall_screen.dart';
 import 'reader_screen.dart';
 
-/// Home: the bookshelf, with an all-access banner, continue-reading card,
+/// Home: the lesson shelf, with an energy bar, continue-lesson card,
 /// search, and a filter sheet (genre / age / favorites) on top.
 class ShelfScreen extends StatefulWidget {
   const ShelfScreen({
     super.key,
     required this.entitlements,
     required this.progress,
+    required this.energy,
     this.auth,
   });
 
   final EntitlementService entitlements;
   final ReadingProgressService progress;
+  final EnergyService energy;
   final AuthService? auth;
 
   @override
@@ -38,19 +41,68 @@ class _ShelfScreenState extends State<ShelfScreen> {
       _selectedGenre != null || _selectedAge != null || _favoritesOnly;
 
   @override
+  void initState() {
+    super.initState();
+    widget.energy.refresh();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  void _openBook(BuildContext context, Book book) {
+  Future<void> _openBook(BuildContext context, Book book) async {
+    final alreadyStarted = widget.progress.lastStepFor(book.id) != null;
+    final isPremium = widget.entitlements.subscriptionActive;
+
+    // Energy is only spent the first time a lesson is opened — resuming or
+    // replaying an already-started lesson is always free.
+    if (!alreadyStarted && !isPremium) {
+      final spent = await widget.energy.spend(EnergyService.costPerLesson);
+      if (!spent) {
+        if (context.mounted) _showOutOfEnergy(context);
+        return;
+      }
+    }
+
+    if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ReaderScreen(
-        entitlements: widget.entitlements,
-        progress: widget.progress,
-        book: book,
-      ),
+      builder: (_) => ReaderScreen(progress: widget.progress, book: book),
     ));
+  }
+
+  void _showOutOfEnergy(BuildContext context) {
+    final wait = widget.energy.timeUntilNext;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Out of energy'),
+        content: Text(
+          wait == null
+              ? 'Come back soon for more energy, or get All Access for unlimited energy.'
+              : 'More energy in about ${_formatWait(wait)}, or get All Access for unlimited energy.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _openSubscribe(context);
+            },
+            child: const Text('Get All Access'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatWait(Duration d) {
+    final minutes = d.inMinutes + (d.inSeconds % 60 > 0 ? 1 : 0);
+    return minutes <= 1 ? '1 minute' : '$minutes minutes';
   }
 
   void _openSubscribe(BuildContext context) {
@@ -73,6 +125,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
           entitlements: widget.entitlements,
           auth: widget.auth!,
           progress: widget.progress,
+          energy: widget.energy,
         ),
       ),
       (route) => false,
@@ -126,12 +179,12 @@ class _ShelfScreenState extends State<ShelfScreen> {
     }).toList();
   }
 
-  /// First book that's been started but not finished, if any.
-  (Book, int)? get _continueReading {
+  /// First lesson that's been started but not finished, if any.
+  (Book, int)? get _continueLesson {
     for (final book in BookCatalog.books) {
-      final page = widget.progress.lastPageFor(book.id);
-      if (page != null && page > 0 && page < book.pages.length - 1) {
-        return (book, page);
+      final step = widget.progress.lastStepFor(book.id);
+      if (step != null && !widget.progress.isCompleted(book.id)) {
+        return (book, step);
       }
     }
     return null;
@@ -144,7 +197,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
     final ages = {for (final b in BookCatalog.books) b.ageRange}.toList()
       ..sort();
     final books = _filteredBooks;
-    final continueReading = _continueReading;
+    final continueLesson = _continueLesson;
 
     return Scaffold(
       drawer: _ShelfDrawer(
@@ -153,7 +206,8 @@ class _ShelfScreenState extends State<ShelfScreen> {
         onSignOutTap: widget.auth == null ? null : () => _signOut(context),
       ),
       body: ListenableBuilder(
-        listenable: Listenable.merge([widget.entitlements, widget.progress]),
+        listenable: Listenable.merge(
+            [widget.entitlements, widget.progress, widget.energy]),
         builder: (context, _) {
           return CustomScrollView(
             slivers: [
@@ -166,17 +220,27 @@ class _ShelfScreenState extends State<ShelfScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   child: widget.entitlements.subscriptionActive
                       ? const _AllAccessBadge()
-                      : _SubscribeBanner(onTap: () => _openSubscribe(context)),
+                      : Column(
+                          children: [
+                            _EnergyBar(
+                              energy: widget.energy,
+                              onTap: () => _openSubscribe(context),
+                            ),
+                            const SizedBox(height: 8),
+                            _SubscribeBanner(onTap: () => _openSubscribe(context)),
+                          ],
+                        ),
                 ),
               ),
-              if (continueReading != null)
+              if (continueLesson != null)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: _ContinueReadingCard(
-                      book: continueReading.$1,
-                      pageIndex: continueReading.$2,
-                      onTap: () => _openBook(context, continueReading.$1),
+                    child: _ContinueLessonCard(
+                      book: continueLesson.$1,
+                      stepIndex: continueLesson.$2,
+                      totalSteps: continueLesson.$1.pages.length * 2,
+                      onTap: () => _openBook(context, continueLesson.$1),
                     ),
                   ),
                 ),
@@ -190,7 +254,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
                           controller: _searchController,
                           onChanged: (value) => setState(() => _query = value),
                           decoration: InputDecoration(
-                            hintText: 'Search books',
+                            hintText: 'Search lessons',
                             prefixIcon: const Icon(Icons.search_rounded),
                             suffixIcon: _query.isEmpty
                                 ? null
@@ -215,7 +279,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
                         smallSize: 9,
                         child: IconButton.filledTonal(
                           onPressed: () => _openFilterSheet(genres, ages),
-                          tooltip: 'Filter books',
+                          tooltip: 'Filter lessons',
                           icon: const Icon(Icons.tune_rounded),
                         ),
                       ),
@@ -229,7 +293,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
                   sliver: SliverToBoxAdapter(
                     child: Center(
                       child: Text(
-                        'No books match — try a different filter.',
+                        'No lessons match — try a different filter.',
                         style: TextStyle(fontSize: 15),
                       ),
                     ),
@@ -245,8 +309,8 @@ class _ShelfScreenState extends State<ShelfScreen> {
                       final book = books[i];
                       return _BookRow(
                         book: book,
-                        owned: widget.entitlements.hasFullAccess(book.id),
-                        subscribed: widget.entitlements.subscriptionActive,
+                        started: widget.progress.lastStepFor(book.id) != null,
+                        completed: widget.progress.isCompleted(book.id),
                         isFavorite: widget.progress.isFavorite(book.id),
                         onToggleFavorite: () =>
                             widget.progress.toggleFavorite(book.id),
@@ -258,6 +322,49 @@ class _ShelfScreenState extends State<ShelfScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _EnergyBar extends StatelessWidget {
+  const _EnergyBar({required this.energy, required this.onTap});
+
+  final EnergyService energy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              const Text('⚡', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: energy.current / EnergyService.maxEnergy,
+                    minHeight: 8,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${energy.current}/${EnergyService.maxEnergy}',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -320,7 +427,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                 ),
               ),
             ),
-            const Text('Filter books',
+            const Text('Filter lessons',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             SwitchListTile(
@@ -411,15 +518,17 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 }
 
-class _ContinueReadingCard extends StatelessWidget {
-  const _ContinueReadingCard({
+class _ContinueLessonCard extends StatelessWidget {
+  const _ContinueLessonCard({
     required this.book,
-    required this.pageIndex,
+    required this.stepIndex,
+    required this.totalSteps,
     required this.onTap,
   });
 
   final Book book;
-  final int pageIndex;
+  final int stepIndex;
+  final int totalSteps;
   final VoidCallback onTap;
 
   @override
@@ -450,12 +559,12 @@ class _ContinueReadingCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Continue reading',
+                    const Text('Continue lesson',
                         style:
                             TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 2),
                     Text(
-                      '${book.title} · page ${pageIndex + 1} of ${book.pages.length}',
+                      '${book.title} · step ${stepIndex + 1} of $totalSteps',
                       style: const TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w600),
                     ),
@@ -574,7 +683,7 @@ class _SubscribeBanner extends StatelessWidget {
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
               const SizedBox(height: 6),
               const Text(
-                'Every book, plus 2 new books every month.',
+                'Unlimited energy — never wait to start a lesson.',
                 style: TextStyle(fontSize: 15),
               ),
               const SizedBox(height: 14),
@@ -612,7 +721,7 @@ class _AllAccessBadge extends StatelessWidget {
           const Icon(Icons.verified_rounded),
           const SizedBox(width: 10),
           const Expanded(
-            child: Text('All Access is active — enjoy every book!',
+            child: Text('All Access is active — unlimited energy!',
                 style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
@@ -645,27 +754,27 @@ class _Tag extends StatelessWidget {
 class _BookRow extends StatelessWidget {
   const _BookRow({
     required this.book,
-    required this.owned,
-    required this.subscribed,
+    required this.started,
+    required this.completed,
     required this.isFavorite,
     required this.onToggleFavorite,
     required this.onTap,
   });
 
   final Book book;
-  final bool owned;
-  final bool subscribed;
+  final bool started;
+  final bool completed;
   final bool isFavorite;
   final VoidCallback onToggleFavorite;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final String status = subscribed
-        ? 'Included'
-        : owned
-            ? 'Owned'
-            : book.priceLabel;
+    final String status = completed
+        ? 'Done'
+        : started
+            ? 'In progress'
+            : 'New';
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -725,7 +834,7 @@ class _BookRow extends StatelessWidget {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: (owned || subscribed)
+                  color: completed
                       ? const Color(0xFFDCF0DC)
                       : Theme.of(context).colorScheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(20),

@@ -1,12 +1,17 @@
 
-# Story Shelf — kids' books platform (Android first)
+# Story Shelf — a Duolingo-style lesson app for kids 3+ (Android first)
 
-A Flutter app where you publish picture books. Readers can **buy a single book**
-or **subscribe for all books + every new release**. Payments go through
-**Google Play Billing**, wrapped by **RevenueCat**.
+A Flutter app of short listen-then-practice lessons for early learners. Each
+lesson teaches a word (picture + sound), then quizzes it back with a
+tap-the-match exercise — kids see it, hear it, then try it themselves.
 
-It ships in **demo mode**, so you can run it and click the whole buy/subscribe
-flow today with no store account.
+Access is **energy**, not per-item purchase: everyone gets a capped pool of
+energy that's spent to start a lesson and slowly refills over time; **All
+Access** (a subscription via **Google Play Billing**, wrapped by
+**RevenueCat**) removes the cap entirely.
+
+It ships in **demo mode**, so you can run it and click through lessons,
+energy, and the subscription flow today with no store account.
 
 ---
 
@@ -25,8 +30,8 @@ flutter run                 # with an Android device/emulator connected
 Everything above works on Linux — no Mac needed for Android. (iOS builds will
 need macOS/Xcode or a cloud-Mac CI later; we're doing Android first.)
 
-In demo mode, "Buy" and "Subscribe" just flip a locally-saved flag so you can
-test the reading/paywall UX.
+In demo mode, energy and "Subscribe" are tracked with locally-saved state so
+you can test the whole lesson/energy/paywall UX with no store account.
 
 ---
 
@@ -43,8 +48,8 @@ in the cloud:
 4. Copy it to your phone, allow "install unknown apps" for your file manager,
    and tap to install.
 
-This installs the **demo** build (no Play account needed) — the buy/subscribe
-buttons flip a local flag, exactly like the web preview.
+This installs the **demo** build (no Play account needed) — energy and
+subscription state are tracked locally, exactly like the web preview.
 
 *Building locally instead (Linux/SteamOS):* SteamOS has an immutable root, so
 install the toolchain inside a container — `distrobox create -n flutter -i
@@ -86,8 +91,8 @@ Firebase entirely and set local entitlements to match:
 
 | Account | Email | Password | Entitlements |
 |---|---|---|---|
-| 👑 All Access subscriber | `subscriber@demo.storyshelf.app` | `demo1234` | Subscription active — every book unlocked |
-| 🙂 Brand-new user | `newuser@demo.storyshelf.app` | `demo1234` | Nothing owned, no subscription |
+| 👑 All Access subscriber | `subscriber@demo.storyshelf.app` | `demo1234` | Subscription active — unlimited energy |
+| 🙂 Brand-new user | `newuser@demo.storyshelf.app` | `demo1234` | Free plan — limited energy, refills over time |
 
 Tap either button on the login screen to sign in instantly, or type the
 credentials by hand. These only work for sign-in, not the "create account"
@@ -99,28 +104,38 @@ flow, and never touch your Firebase project.
 
 ```
 lib/
-  models/book.dart                        Book (+ ageRange, genres) + BookPage
-  data/book_catalog.dart                  the 3 sample books (+ sub price label)
+  models/book.dart                        Book (a lesson: ageRange, genres, pages) + BookPage
+  data/book_catalog.dart                  the 3 sample lessons
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
-  services/entitlement_service.dart       access rules + DemoEntitlementService
+  services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
+  services/energy_service.dart            energy pool: spend, regen over time
+  services/reading_progress_service.dart  per-lesson step/completion + favorites
+  services/narration_service.dart         read-aloud / practice-prompt TTS
   services/auth_service.dart              Firebase email/password sign-in
   screens/landing_screen.dart             first screen: app name + tagline
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
   screens/login_screen.dart               email/password sign in & sign up
-  screens/shelf_screen.dart               home shelf + subscribe banner
-  screens/reader_screen.dart              page reader + paywall wall
-  screens/paywall_screen.dart             buy-book vs subscribe
+  screens/shelf_screen.dart               lesson shelf: energy bar, search, filters
+  screens/reader_screen.dart              lesson player: learn + practice steps
+  screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
 ```
 
-**Access rule (one place, `entitlement_service.dart`):**
-`full access to a book = active subscription OR that book was bought`.
-Preview pages are always free.
+**How access works:** starting a lesson costs energy (`EnergyService`,
+`costPerLesson`, default 5 of a 25 cap), which regenerates automatically
+over time (default 1 per 10 minutes). An active subscription
+(`EntitlementService.subscriptionActive`) skips the cost entirely —
+`ShelfScreen._openBook` is the one place that decides whether a tap opens
+the lesson or shows the "out of energy" dialog. Energy is only spent the
+*first* time a lesson is opened; resuming or replaying one already started
+is always free. Per-lesson progress (last step, completion) and favorites
+live in `ReadingProgressService`.
 
-This is why "all upcoming books" is free: adding a book to the catalog needs
-no per-book wiring — subscribers already pass the `subscriptionActive` check.
+This is why new lessons ship for free users too: adding one to the catalog
+needs no per-lesson wiring — everyone already passes through the same
+energy/subscription check.
 
 ---
 
@@ -128,11 +143,10 @@ no per-book wiring — subscribers already pass the `subscriptionActive` check.
 
 **Google Play Console**
 1. Create the app, upload a signed build to a test track.
-2. **In-app products** → one *managed (non-consumable)* product per book, using
-   each book's `playProductId` (`book_animals`, `book_colours`, `book_numbers`).
-3. **Subscriptions** → create one subscription with a monthly base plan
-   (add an annual base plan too if you want).
-4. Add **license testers** so you can buy without being charged.
+2. **Subscriptions** → create one subscription (All Access) with a monthly
+   base plan (add an annual base plan too if you want). There's nothing to
+   sell per lesson — energy is a free, local mechanic, not a product.
+3. Add **license testers** so you can subscribe without being charged.
 
 **RevenueCat**
 1. Add your Android app + Play service-account credentials.
@@ -151,21 +165,23 @@ Also uncomment the RevenueCat import at the top.
 
 > `purchases_flutter`'s API shifts between major versions — check method
 > signatures in `revenuecat_entitlement_service.dart` against the version you
-> pin. Prices shown in the app should come from the store, not the
-> `priceLabel`/`kSubscriptionPriceLabel` placeholders (those are demo-only).
+> pin. The price shown in the app should come from the store, not the
+> `kSubscriptionPriceLabel` placeholder (that's demo-only).
 
 ---
 
-## 4. Shipping "2 new books a month" without an app update
+## 4. Shipping new lessons without an app update
 
-Right now the catalog is bundled in the app, so a new book means a new release.
-To publish without going through review each time, move `book_catalog.dart` to a
-**JSON manifest + images served from Cloudflare R2** (zero egress fees) and fetch
-it at startup. Subscribers unlock new books instantly; buyers see them for sale.
-That's the point where your earlier Cloudflare instinct pays off.
+Right now the catalog is bundled in the app, so a new lesson means a new
+release. To publish without going through review each time, move
+`book_catalog.dart` to a **JSON manifest + images served from Cloudflare R2**
+(zero egress fees) and fetch it at startup. Every learner sees new lessons
+instantly — access is decided by energy/subscription, not by which lessons
+shipped inside the app.
 
 ## 5. Replacing the placeholder art
 
 Pages use emoji as stand-in art. For real illustrations, add an `imageUrl`
 (R2-hosted) or bundled `imageAsset` to `BookPage` and render it in
-`reader_screen.dart` instead of the emoji `Text`.
+`reader_screen.dart` instead of the emoji `Text` — both the learn step and
+the practice-step choice cards use it.

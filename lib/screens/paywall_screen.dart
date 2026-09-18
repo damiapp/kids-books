@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/book_catalog.dart';
-import '../models/book.dart';
 import '../services/entitlement_service.dart';
 
-/// Two ways to unlock: buy this one book, or subscribe to everything.
-/// Pass [book] to show the single-book option; omit it for a subscribe-only screen.
+/// The one upgrade in the app: All Access removes the energy cap entirely.
 class PaywallScreen extends StatefulWidget {
-  const PaywallScreen({super.key, required this.entitlements, this.book});
+  const PaywallScreen({super.key, required this.entitlements});
 
   final EntitlementService entitlements;
-  final Book? book;
 
   @override
   State<PaywallScreen> createState() => _PaywallScreenState();
@@ -37,8 +34,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final book = widget.book;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Unlock')),
       body: AbsorbPointer(
@@ -46,18 +41,16 @@ class _PaywallScreenState extends State<PaywallScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
           children: [
-            // ── All-access subscription (the headline option) ──
             _OptionCard(
-              highlight: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('📚  All Access',
+                  const Text('⚡  All Access',
                       style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 8),
                   const Text(
-                    'Every book, plus 2 brand-new books every month — '
-                    'unlocked automatically as soon as they arrive.',
+                    'Unlimited energy — never wait to start a lesson. Plus '
+                    'every new lesson we add, the moment it lands.',
                     style: TextStyle(fontSize: 15, height: 1.4),
                   ),
                   const SizedBox(height: 16),
@@ -74,37 +67,6 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 ],
               ),
             ),
-
-            // ── Single book ──
-            if (book != null) ...[
-              const SizedBox(height: 16),
-              _OptionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('${book.coverEmoji}  ${book.title}',
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 6),
-                    const Text('Buy this book once, keep it forever.',
-                        style: TextStyle(fontSize: 15)),
-                    const SizedBox(height: 16),
-                    Text(book.priceLabel,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 12),
-                    OutlinedButton(
-                      onPressed: () =>
-                          _run(() => widget.entitlements.purchaseBook(book)),
-                      style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(50)),
-                      child: Text('Buy ${book.title}'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
             const SizedBox(height: 20),
             Center(
               child: TextButton(
@@ -128,10 +90,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
 }
 
 class _OptionCard extends StatelessWidget {
-  const _OptionCard({required this.child, this.highlight = false});
+  const _OptionCard({required this.child});
 
   final Widget child;
-  final bool highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -139,12 +100,9 @@ class _OptionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: highlight ? scheme.primaryContainer : scheme.surface,
+        color: scheme.primaryContainer,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: highlight ? scheme.primary : scheme.outlineVariant,
-          width: highlight ? 2 : 1,
-        ),
+        border: Border.all(color: scheme.primary, width: 2),
       ),
       child: child,
     );
