@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
+import '../services/reading_progress_service.dart';
 import 'onboarding_screen.dart';
 
 /// First screen a new visitor sees: app name, tagline, and a way in.
@@ -10,10 +11,12 @@ class LandingScreen extends StatelessWidget {
     super.key,
     required this.entitlements,
     required this.auth,
+    required this.progress,
   });
 
   final EntitlementService entitlements;
   final AuthService auth;
+  final ReadingProgressService progress;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +64,7 @@ class LandingScreen extends StatelessWidget {
                       builder: (_) => OnboardingScreen(
                         entitlements: entitlements,
                         auth: auth,
+                        progress: progress,
                       ),
                     ));
                   },

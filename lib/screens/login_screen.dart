@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/demo_accounts.dart';
 import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
+import '../services/reading_progress_service.dart';
 import 'shelf_screen.dart';
 
 /// Email/password sign-in and sign-up, backed by Firebase Authentication.
@@ -11,10 +12,12 @@ class LoginScreen extends StatefulWidget {
     super.key,
     required this.entitlements,
     required this.auth,
+    required this.progress,
   });
 
   final EntitlementService entitlements;
   final AuthService auth;
+  final ReadingProgressService progress;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -85,6 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (_) => ShelfScreen(
           entitlements: widget.entitlements,
           auth: widget.auth,
+          progress: widget.progress,
         ),
       ),
       (route) => false,

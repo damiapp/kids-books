@@ -3,14 +3,21 @@ import 'package:flutter/material.dart';
 import '../models/book.dart';
 import '../services/entitlement_service.dart';
 import '../services/narration_service.dart';
+import '../services/reading_progress_service.dart';
 import 'paywall_screen.dart';
 
 /// Swipe through one book. Preview pages are free; the first locked page shows
 /// the paywall wall — the "pay per view" moment.
 class ReaderScreen extends StatefulWidget {
-  const ReaderScreen({super.key, required this.entitlements, required this.book});
+  const ReaderScreen({
+    super.key,
+    required this.entitlements,
+    required this.progress,
+    required this.book,
+  });
 
   final EntitlementService entitlements;
+  final ReadingProgressService progress;
   final Book book;
 
   @override
@@ -18,9 +25,17 @@ class ReaderScreen extends StatefulWidget {
 }
 
 class _ReaderScreenState extends State<ReaderScreen> {
-  final _controller = PageController();
+  late final PageController _controller;
   final _narration = NarrationService();
-  int _index = 0;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    final saved = widget.progress.lastPageFor(widget.book.id) ?? 0;
+    _index = saved.clamp(0, widget.book.pages.length - 1).toInt();
+    _controller = PageController(initialPage: _index);
+  }
 
   @override
   void dispose() {
@@ -47,10 +62,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   Widget build(BuildContext context) {
     final book = widget.book;
+    final isFavorite = widget.progress.isFavorite(book.id);
 
     return Scaffold(
       body: ListenableBuilder(
-        listenable: Listenable.merge([widget.entitlements, _narration]),
+        listenable:
+            Listenable.merge([widget.entitlements, widget.progress, _narration]),
         builder: (context, _) {
           return SafeArea(
             child: Column(
@@ -74,6 +91,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
+                      IconButton(
+                        onPressed: () => widget.progress.toggleFavorite(book.id),
+                        icon: Icon(
+                          isFavorite
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          color: isFavorite ? const Color(0xFFE0637A) : null,
+                        ),
+                      ),
                       SizedBox(
                         width: 48,
                         child: Center(
@@ -93,6 +119,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     onPageChanged: (i) {
                       _narration.stop();
                       setState(() => _index = i);
+                      widget.progress.setLastPage(book.id, i);
                     },
                     itemCount: book.pages.length,
                     itemBuilder: (context, i) {

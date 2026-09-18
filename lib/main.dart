@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/entitlement_service.dart';
+import 'services/reading_progress_service.dart';
 // import 'services/revenuecat_entitlement_service.dart'; // switch on for production
 import 'screens/landing_screen.dart';
 import 'screens/shelf_screen.dart';
@@ -15,6 +16,7 @@ Future<void> main() async {
   );
 
   final auth = AuthService();
+  final progress = ReadingProgressService();
 
   // ── Demo mode: runs immediately, no store setup, fake purchases. ──
   final EntitlementService entitlements = DemoEntitlementService();
@@ -25,14 +27,25 @@ Future<void> main() async {
   // );
 
   await entitlements.init();
-  runApp(KidsBooksApp(entitlements: entitlements, auth: auth));
+  await progress.init();
+  runApp(KidsBooksApp(
+    entitlements: entitlements,
+    auth: auth,
+    progress: progress,
+  ));
 }
 
 class KidsBooksApp extends StatelessWidget {
-  const KidsBooksApp({super.key, required this.entitlements, required this.auth});
+  const KidsBooksApp({
+    super.key,
+    required this.entitlements,
+    required this.auth,
+    required this.progress,
+  });
 
   final EntitlementService entitlements;
   final AuthService auth;
+  final ReadingProgressService progress;
 
   @override
   Widget build(BuildContext context) {
@@ -50,8 +63,10 @@ class KidsBooksApp extends StatelessWidget {
         listenable: auth,
         builder: (context, _) {
           return auth.isSignedIn
-              ? ShelfScreen(entitlements: entitlements, auth: auth)
-              : LandingScreen(entitlements: entitlements, auth: auth);
+              ? ShelfScreen(
+                  entitlements: entitlements, auth: auth, progress: progress)
+              : LandingScreen(
+                  entitlements: entitlements, auth: auth, progress: progress);
         },
       ),
     );

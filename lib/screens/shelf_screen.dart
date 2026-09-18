@@ -4,16 +4,23 @@ import '../data/book_catalog.dart';
 import '../models/book.dart';
 import '../services/auth_service.dart';
 import '../services/entitlement_service.dart';
+import '../services/reading_progress_service.dart';
 import 'landing_screen.dart';
 import 'paywall_screen.dart';
 import 'reader_screen.dart';
 
-/// Home: the bookshelf, with an all-access banner, search, and genre/age
-/// filters on top.
+/// Home: the bookshelf, with an all-access banner, continue-reading card,
+/// search, and a filter sheet (genre / age / favorites) on top.
 class ShelfScreen extends StatefulWidget {
-  const ShelfScreen({super.key, required this.entitlements, this.auth});
+  const ShelfScreen({
+    super.key,
+    required this.entitlements,
+    required this.progress,
+    this.auth,
+  });
 
   final EntitlementService entitlements;
+  final ReadingProgressService progress;
   final AuthService? auth;
 
   @override
@@ -25,6 +32,10 @@ class _ShelfScreenState extends State<ShelfScreen> {
   String _query = '';
   String? _selectedGenre;
   String? _selectedAge;
+  bool _favoritesOnly = false;
+
+  bool get _hasActiveFilter =>
+      _selectedGenre != null || _selectedAge != null || _favoritesOnly;
 
   @override
   void dispose() {
@@ -34,8 +45,11 @@ class _ShelfScreenState extends State<ShelfScreen> {
 
   void _openBook(BuildContext context, Book book) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          ReaderScreen(entitlements: widget.entitlements, book: book),
+      builder: (_) => ReaderScreen(
+        entitlements: widget.entitlements,
+        progress: widget.progress,
+        book: book,
+      ),
     ));
   }
 
@@ -56,10 +70,39 @@ class _ShelfScreenState extends State<ShelfScreen> {
     navigator.pushAndRemoveUntil(
       MaterialPageRoute(
         builder: (_) => LandingScreen(
-            entitlements: widget.entitlements, auth: widget.auth!),
+          entitlements: widget.entitlements,
+          auth: widget.auth!,
+          progress: widget.progress,
+        ),
       ),
       (route) => false,
     );
+  }
+
+  Future<void> _openFilterSheet(List<String> genres, List<String> ages) async {
+    final result = await showModalBottomSheet<_FilterSelection>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _FilterSheet(
+        genres: genres,
+        ages: ages,
+        initial: _FilterSelection(
+          genre: _selectedGenre,
+          age: _selectedAge,
+          favoritesOnly: _favoritesOnly,
+        ),
+      ),
+    );
+    if (result != null) {
+      setState(() {
+        _selectedGenre = result.genre;
+        _selectedAge = result.age;
+        _favoritesOnly = result.favoritesOnly;
+      });
+    }
   }
 
   List<Book> get _filteredBooks {
@@ -71,6 +114,9 @@ class _ShelfScreenState extends State<ShelfScreen> {
       if (_selectedAge != null && book.ageRange != _selectedAge) {
         return false;
       }
+      if (_favoritesOnly && !widget.progress.isFavorite(book.id)) {
+        return false;
+      }
       if (query.isNotEmpty &&
           !book.title.toLowerCase().contains(query) &&
           !book.subtitle.toLowerCase().contains(query)) {
@@ -80,6 +126,17 @@ class _ShelfScreenState extends State<ShelfScreen> {
     }).toList();
   }
 
+  /// First book that's been started but not finished, if any.
+  (Book, int)? get _continueReading {
+    for (final book in BookCatalog.books) {
+      final page = widget.progress.lastPageFor(book.id);
+      if (page != null && page > 0 && page < book.pages.length - 1) {
+        return (book, page);
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final genres = {for (final b in BookCatalog.books) ...b.genres}.toList()
@@ -87,6 +144,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
     final ages = {for (final b in BookCatalog.books) b.ageRange}.toList()
       ..sort();
     final books = _filteredBooks;
+    final continueReading = _continueReading;
 
     return Scaffold(
       drawer: _ShelfDrawer(
@@ -95,7 +153,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
         onSignOutTap: widget.auth == null ? null : () => _signOut(context),
       ),
       body: ListenableBuilder(
-        listenable: widget.entitlements,
+        listenable: Listenable.merge([widget.entitlements, widget.progress]),
         builder: (context, _) {
           return CustomScrollView(
             slivers: [
@@ -111,49 +169,58 @@ class _ShelfScreenState extends State<ShelfScreen> {
                       : _SubscribeBanner(onTap: () => _openSubscribe(context)),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (value) => setState(() => _query = value),
-                    decoration: InputDecoration(
-                      hintText: 'Search books',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _query.isEmpty
-                          ? null
-                          : IconButton(
-                              icon: const Icon(Icons.clear_rounded),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                            ),
-                      filled: true,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
-                      ),
+              if (continueReading != null)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: _ContinueReadingCard(
+                      book: continueReading.$1,
+                      pageIndex: continueReading.$2,
+                      onTap: () => _openBook(context, continueReading.$1),
                     ),
                   ),
                 ),
-              ),
               SliverToBoxAdapter(
-                child: _FilterRow(
-                  label: 'Genre',
-                  options: genres,
-                  selected: _selectedGenre,
-                  onSelected: (value) =>
-                      setState(() => _selectedGenre = value),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: _FilterRow(
-                  label: 'Age',
-                  options: ages,
-                  optionLabel: (age) => 'Ages $age',
-                  selected: _selectedAge,
-                  onSelected: (value) => setState(() => _selectedAge = value),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (value) => setState(() => _query = value),
+                          decoration: InputDecoration(
+                            hintText: 'Search books',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            suffixIcon: _query.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.clear_rounded),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _query = '');
+                                    },
+                                  ),
+                            filled: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Badge(
+                        isLabelVisible: _hasActiveFilter,
+                        smallSize: 9,
+                        child: IconButton.filledTonal(
+                          onPressed: () => _openFilterSheet(genres, ages),
+                          tooltip: 'Filter books',
+                          icon: const Icon(Icons.tune_rounded),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               if (books.isEmpty)
@@ -180,6 +247,9 @@ class _ShelfScreenState extends State<ShelfScreen> {
                         book: book,
                         owned: widget.entitlements.hasFullAccess(book.id),
                         subscribed: widget.entitlements.subscriptionActive,
+                        isFavorite: widget.progress.isFavorite(book.id),
+                        onToggleFavorite: () =>
+                            widget.progress.toggleFavorite(book.id),
                         onTap: () => _openBook(context, book),
                       );
                     },
@@ -193,48 +263,209 @@ class _ShelfScreenState extends State<ShelfScreen> {
   }
 }
 
-class _FilterRow extends StatelessWidget {
-  const _FilterRow({
-    required this.label,
-    required this.options,
-    required this.selected,
-    required this.onSelected,
-    this.optionLabel,
+class _FilterSelection {
+  const _FilterSelection({this.genre, this.age, this.favoritesOnly = false});
+
+  final String? genre;
+  final String? age;
+  final bool favoritesOnly;
+}
+
+class _FilterSheet extends StatefulWidget {
+  const _FilterSheet({
+    required this.genres,
+    required this.ages,
+    required this.initial,
   });
 
-  final String label;
-  final List<String> options;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
-  final String Function(String option)? optionLabel;
+  final List<String> genres;
+  final List<String> ages;
+  final _FilterSelection initial;
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  String? _genre;
+  String? _age;
+  bool _favoritesOnly = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _genre = widget.initial.genre;
+    _age = widget.initial.age;
+    _favoritesOnly = widget.initial.favoritesOnly;
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (options.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 42,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8, top: 8),
-            child: ChoiceChip(
-              label: Text('All $label'),
-              selected: selected == null,
-              onSelected: (_) => onSelected(null),
-            ),
-          ),
-          for (final option in options)
-            Padding(
-              padding: const EdgeInsets.only(right: 8, top: 8),
-              child: ChoiceChip(
-                label: Text(optionLabel?.call(option) ?? option),
-                selected: selected == option,
-                onSelected: (_) => onSelected(selected == option ? null : option),
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: scheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-        ],
+            const Text('Filter books',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Favorites only'),
+              secondary: const Icon(Icons.favorite_rounded),
+              value: _favoritesOnly,
+              onChanged: (value) => setState(() => _favoritesOnly = value),
+            ),
+            if (widget.genres.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              const Text('Genre', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All genres'),
+                    selected: _genre == null,
+                    onSelected: (_) => setState(() => _genre = null),
+                  ),
+                  for (final genre in widget.genres)
+                    ChoiceChip(
+                      label: Text(genre),
+                      selected: _genre == genre,
+                      onSelected: (_) =>
+                          setState(() => _genre = _genre == genre ? null : genre),
+                    ),
+                ],
+              ),
+            ],
+            if (widget.ages.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text('Age', style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All ages'),
+                    selected: _age == null,
+                    onSelected: (_) => setState(() => _age = null),
+                  ),
+                  for (final age in widget.ages)
+                    ChoiceChip(
+                      label: Text('Ages $age'),
+                      selected: _age == age,
+                      onSelected: (_) =>
+                          setState(() => _age = _age == age ? null : age),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => setState(() {
+                      _genre = null;
+                      _age = null;
+                      _favoritesOnly = false;
+                    }),
+                    child: const Text('Clear'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop(
+                      _FilterSelection(
+                        genre: _genre,
+                        age: _age,
+                        favoritesOnly: _favoritesOnly,
+                      ),
+                    ),
+                    child: const Text('Apply'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ContinueReadingCard extends StatelessWidget {
+  const _ContinueReadingCard({
+    required this.book,
+    required this.pageIndex,
+    required this.onTap,
+  });
+
+  final Book book;
+  final int pageIndex;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Material(
+      color: scheme.secondaryContainer,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: book.coverColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(book.coverEmoji, style: const TextStyle(fontSize: 28)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Continue reading',
+                        style:
+                            TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${book.title} · page ${pageIndex + 1} of ${book.pages.length}',
+                      style: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -416,12 +647,16 @@ class _BookRow extends StatelessWidget {
     required this.book,
     required this.owned,
     required this.subscribed,
+    required this.isFavorite,
+    required this.onToggleFavorite,
     required this.onTap,
   });
 
   final Book book;
   final bool owned;
   final bool subscribed;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final VoidCallback onTap;
 
   @override
@@ -477,7 +712,15 @@ class _BookRow extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 4),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(
+                  isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isFavorite ? const Color(0xFFE0637A) : null,
+                ),
+                onPressed: onToggleFavorite,
+              ),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
