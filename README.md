@@ -82,7 +82,7 @@ config isn't a secret — it's meant to ship inside the app. Access is
 controlled by Firebase Auth and security rules, not by hiding these values,
 so it's fine to commit real ones here.
 
-Once signed in, tap the sign-out icon in the shelf's app bar to go back
+Once signed in, open the left-hand menu and tap **Sign out** to go back
 through landing → onboarding → login again.
 
 **Try it now without any Firebase setup** — the login screen has two
@@ -105,7 +105,7 @@ flow, and never touch your Firebase project.
 ```
 lib/
   models/book.dart                        Book (a lesson: ageRange, genres, pages) + BookPage
-  data/book_catalog.dart                  the 3 sample lessons
+  data/book_catalog.dart                  the 3 sample lessons + the path's units
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
@@ -116,18 +116,24 @@ lib/
   screens/landing_screen.dart             first screen: app name + tagline
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
   screens/login_screen.dart               email/password sign in & sign up
-  screens/shelf_screen.dart               lesson shelf: energy bar, search, filters
+  screens/path_screen.dart                learning path: units + winding lesson trail
   screens/reader_screen.dart              lesson player: learn + practice steps
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
 ```
 
+**The path:** `BookCatalog.units` defines the trail — each unit is a
+banner plus an ordered list of lesson ids, closed out by a trophy node.
+Order is what gates progression: a lesson unlocks once the one before it
+is finished, so the whole path is one flat sequence split into units. Add
+a lesson to `books` and drop its id into a unit's `bookIds` to extend it.
+
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically
 over time (default 1 per 10 minutes). An active subscription
 (`EntitlementService.subscriptionActive`) skips the cost entirely —
-`ShelfScreen._openBook` is the one place that decides whether a tap opens
+`PathScreen._openLesson` is the one place that decides whether a tap opens
 the lesson or shows the "out of energy" dialog. Energy is only spent the
 *first* time a lesson is opened; resuming or replaying one already started
 is always free. Per-lesson progress (last step, completion) and favorites
@@ -135,7 +141,7 @@ live in `ReadingProgressService`.
 
 This is why new lessons ship for free users too: adding one to the catalog
 needs no per-lesson wiring — everyone already passes through the same
-energy/subscription check.
+unlock + energy/subscription check.
 
 ---
 

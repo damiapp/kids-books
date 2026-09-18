@@ -8,7 +8,7 @@ import 'services/entitlement_service.dart';
 import 'services/reading_progress_service.dart';
 // import 'services/revenuecat_entitlement_service.dart'; // switch on for production
 import 'screens/landing_screen.dart';
-import 'screens/shelf_screen.dart';
+import 'screens/path_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,13 +63,13 @@ class KidsBooksApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF3AA7A0),
         scaffoldBackgroundColor: const Color(0xFFFDFBF6),
       ),
-      // Signed in → straight to the shelf. Signed out → landing page, which
+      // Signed in → straight to the path. Signed out → landing page, which
       // leads through the onboarding slides into sign-in.
       home: ListenableBuilder(
         listenable: auth,
         builder: (context, _) {
           return auth.isSignedIn
-              ? ShelfScreen(
+              ? PathScreen(
                   entitlements: entitlements,
                   auth: auth,
                   progress: progress,

@@ -37,7 +37,7 @@ List<_LessonStep> _buildSteps(Book book) {
 /// Plays one lesson: a "learn" step (see + hear the word) followed by a
 /// "practice" step (tap the match) for each page — a Duolingo-style
 /// teach-then-test loop. Energy is spent once, before this screen opens
-/// (see ShelfScreen), so nothing here is paywalled.
+/// (see PathScreen), so nothing here is paywalled.
 class ReaderScreen extends StatefulWidget {
   const ReaderScreen({
     super.key,

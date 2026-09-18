@@ -8,7 +8,41 @@ import '../models/book.dart';
 /// startup — access is decided by energy + subscription, not by which
 /// lessons shipped inside the app, so new ones show up for everyone
 /// immediately.
+/// One section of the learning path: a banner plus the lessons under it,
+/// in the order they unlock.
+class LessonUnit {
+  const LessonUnit({
+    required this.section,
+    required this.title,
+    required this.color,
+    required this.bookIds,
+  });
+
+  /// Small label above the title, e.g. "SECTION 1, UNIT 1".
+  final String section;
+  final String title;
+  final Color color;
+  final List<String> bookIds;
+}
+
 class BookCatalog {
+  /// The path, top to bottom. A lesson unlocks when the one before it is
+  /// finished, so order here is what gates progression.
+  static const List<LessonUnit> units = [
+    LessonUnit(
+      section: 'SECTION 1, UNIT 1',
+      title: 'First words',
+      color: Color(0xFF3AA7A0),
+      bookIds: ['colours', 'numbers'],
+    ),
+    LessonUnit(
+      section: 'SECTION 1, UNIT 2',
+      title: 'Animals & nature',
+      color: Color(0xFFE08D3C),
+      bookIds: ['animals'],
+    ),
+  ];
+
   static const List<Book> books = [
     Book(
       id: 'animals',

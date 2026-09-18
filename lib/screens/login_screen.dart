@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/reading_progress_service.dart';
-import 'shelf_screen.dart';
+import 'path_screen.dart';
 
 /// Email/password sign-in and sign-up, backed by Firebase Authentication.
 class LoginScreen extends StatefulWidget {
@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => ShelfScreen(
+        builder: (_) => PathScreen(
           entitlements: widget.entitlements,
           auth: widget.auth,
           progress: widget.progress,
