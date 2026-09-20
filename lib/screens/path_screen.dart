@@ -2,15 +2,15 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../data/book_catalog.dart';
-import '../models/book.dart';
+import '../data/lesson_catalog.dart';
+import '../models/lesson.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
-import '../services/reading_progress_service.dart';
+import '../services/progress_service.dart';
 import 'landing_screen.dart';
+import 'lesson_screen.dart';
 import 'paywall_screen.dart';
-import 'reader_screen.dart';
 
 enum _NodeState { completed, current, locked }
 
@@ -27,7 +27,7 @@ class PathScreen extends StatefulWidget {
   });
 
   final EntitlementService entitlements;
-  final ReadingProgressService progress;
+  final ProgressService progress;
   final EnergyService energy;
   final AuthService? auth;
 
@@ -43,33 +43,33 @@ class _PathScreenState extends State<PathScreen> {
   }
 
   /// Every lesson, in unlock order.
-  List<Book> get _orderedLessons => [
-        for (final unit in BookCatalog.units)
-          for (final id in unit.bookIds) BookCatalog.byId(id),
+  List<Lesson> get _orderedLessons => [
+        for (final unit in LessonCatalog.units)
+          for (final id in unit.lessonIds) LessonCatalog.byId(id),
       ];
 
   /// The next lesson to play — the first one not yet finished.
-  Book? get _currentLesson {
-    for (final book in _orderedLessons) {
-      if (!widget.progress.isCompleted(book.id)) return book;
+  Lesson? get _currentLesson {
+    for (final lesson in _orderedLessons) {
+      if (!widget.progress.isCompleted(lesson.id)) return lesson;
     }
     return null;
   }
 
-  _NodeState _stateOf(Book book) {
-    if (widget.progress.isCompleted(book.id)) return _NodeState.completed;
-    return book.id == _currentLesson?.id ? _NodeState.current : _NodeState.locked;
+  _NodeState _stateOf(Lesson lesson) {
+    if (widget.progress.isCompleted(lesson.id)) return _NodeState.completed;
+    return lesson.id == _currentLesson?.id ? _NodeState.current : _NodeState.locked;
   }
 
   /// How far through the current lesson we are, 0–1, or null if unstarted.
-  double? _progressOf(Book book) {
-    final step = widget.progress.lastStepFor(book.id);
+  double? _progressOf(Lesson lesson) {
+    final step = widget.progress.lastStepFor(lesson.id);
     if (step == null) return null;
-    return (step + 1) / (book.pages.length * 2);
+    return (step + 1) / (lesson.words.length * 2);
   }
 
-  Future<void> _openLesson(BuildContext context, Book book) async {
-    final alreadyStarted = widget.progress.lastStepFor(book.id) != null;
+  Future<void> _openLesson(BuildContext context, Lesson lesson) async {
+    final alreadyStarted = widget.progress.lastStepFor(lesson.id) != null;
     final isPremium = widget.entitlements.subscriptionActive;
 
     // Energy is only spent the first time a lesson is opened — resuming or
@@ -84,7 +84,7 @@ class _PathScreenState extends State<PathScreen> {
 
     if (!context.mounted) return;
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ReaderScreen(progress: widget.progress, book: book),
+      builder: (_) => LessonScreen(progress: widget.progress, lesson: lesson),
     ));
   }
 
@@ -185,22 +185,22 @@ class _PathScreenState extends State<PathScreen> {
                 Expanded(
                   child: CustomScrollView(
                     slivers: [
-                      for (final unit in BookCatalog.units) ...[
+                      for (final unit in LessonCatalog.units) ...[
                         SliverPersistentHeader(
                           pinned: true,
                           delegate: _UnitHeaderDelegate(
                             unit: unit,
-                            doneCount: unit.bookIds
+                            doneCount: unit.lessonIds
                                 .where(widget.progress.isCompleted)
                                 .length,
                           ),
                         ),
                         SliverList.builder(
                           // One node per lesson, plus a trophy to close the unit.
-                          itemCount: unit.bookIds.length + 1,
+                          itemCount: unit.lessonIds.length + 1,
                           itemBuilder: (context, i) {
-                            if (i == unit.bookIds.length) {
-                              final unitDone = unit.bookIds
+                            if (i == unit.lessonIds.length) {
+                              final unitDone = unit.lessonIds
                                   .every(widget.progress.isCompleted);
                               return _PathRow(
                                 index: i,
@@ -216,11 +216,11 @@ class _PathScreenState extends State<PathScreen> {
                               );
                             }
 
-                            final book = BookCatalog.byId(unit.bookIds[i]);
-                            final state = _stateOf(book);
+                            final lesson = LessonCatalog.byId(unit.lessonIds[i]);
+                            final state = _stateOf(lesson);
                             return _PathRow(
                               index: i,
-                              label: book.title,
+                              label: lesson.title,
                               child: _PathNode(
                                 state: state,
                                 icon: state == _NodeState.completed
@@ -230,14 +230,14 @@ class _PathScreenState extends State<PathScreen> {
                                         : Icons.lock_rounded,
                                 emoji: state == _NodeState.locked
                                     ? null
-                                    : book.coverEmoji,
+                                    : lesson.coverEmoji,
                                 progress: state == _NodeState.current
-                                    ? _progressOf(book)
+                                    ? _progressOf(lesson)
                                     : null,
                                 showStart: state == _NodeState.current,
                                 onTap: state == _NodeState.locked
                                     ? () => _showLocked(context)
-                                    : () => _openLesson(context, book),
+                                    : () => _openLesson(context, lesson),
                               ),
                             );
                           },
@@ -412,7 +412,7 @@ class _UnitHeaderDelegate extends SliverPersistentHeaderDelegate {
                 ),
               ),
               Text(
-                '$doneCount/${unit.bookIds.length}',
+                '$doneCount/${unit.lessonIds.length}',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
@@ -663,7 +663,7 @@ class _PathDrawer extends StatelessWidget {
                 children: [
                   const Text('📚', style: TextStyle(fontSize: 36)),
                   const SizedBox(height: 10),
-                  const Text('Story Shelf',
+                  const Text('Peekado',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),

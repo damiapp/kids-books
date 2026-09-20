@@ -2,58 +2,58 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../models/book.dart';
+import '../models/lesson.dart';
 import '../services/narration_service.dart';
-import '../services/reading_progress_service.dart';
+import '../services/progress_service.dart';
 
-sealed class _LessonStep {
-  const _LessonStep();
+sealed class _Step {
+  const _Step();
 }
 
-class _LearnStep extends _LessonStep {
-  const _LearnStep(this.page);
-  final BookPage page;
+class _LearnStep extends _Step {
+  const _LearnStep(this.word);
+  final LessonWord word;
 }
 
-class _PracticeStep extends _LessonStep {
+class _PracticeStep extends _Step {
   const _PracticeStep(this.target, this.choices);
-  final BookPage target;
-  final List<BookPage> choices;
+  final LessonWord target;
+  final List<LessonWord> choices;
 }
 
-List<_LessonStep> _buildSteps(Book book) {
+List<_Step> _buildSteps(Lesson lesson) {
   final rnd = Random();
-  final steps = <_LessonStep>[];
-  for (final page in book.pages) {
-    steps.add(_LearnStep(page));
-    final others = book.pages.where((p) => p != page).toList()..shuffle(rnd);
+  final steps = <_Step>[];
+  for (final word in lesson.words) {
+    steps.add(_LearnStep(word));
+    final others = lesson.words.where((w) => w != word).toList()..shuffle(rnd);
     final distractorCount = others.length < 2 ? others.length : 2;
-    final choices = [page, ...others.take(distractorCount)]..shuffle(rnd);
-    steps.add(_PracticeStep(page, choices));
+    final choices = [word, ...others.take(distractorCount)]..shuffle(rnd);
+    steps.add(_PracticeStep(word, choices));
   }
   return steps;
 }
 
 /// Plays one lesson: a "learn" step (see + hear the word) followed by a
-/// "practice" step (tap the match) for each page — a Duolingo-style
-/// teach-then-test loop. Energy is spent once, before this screen opens
-/// (see PathScreen), so nothing here is paywalled.
-class ReaderScreen extends StatefulWidget {
-  const ReaderScreen({
+/// "practice" step (tap the match) for each word — a teach-then-test
+/// loop. Energy is spent once, before this screen opens (see PathScreen),
+/// so nothing here is paywalled.
+class LessonScreen extends StatefulWidget {
+  const LessonScreen({
     super.key,
     required this.progress,
-    required this.book,
+    required this.lesson,
   });
 
-  final ReadingProgressService progress;
-  final Book book;
+  final ProgressService progress;
+  final Lesson lesson;
 
   @override
-  State<ReaderScreen> createState() => _ReaderScreenState();
+  State<LessonScreen> createState() => _LessonScreenState();
 }
 
-class _ReaderScreenState extends State<ReaderScreen> {
-  late final List<_LessonStep> _steps = _buildSteps(widget.book);
+class _LessonScreenState extends State<LessonScreen> {
+  late final List<_Step> _steps = _buildSteps(widget.lesson);
   late final PageController _controller;
   final _narration = NarrationService();
   late int _index;
@@ -61,7 +61,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
-    final saved = widget.progress.lastStepFor(widget.book.id) ?? 0;
+    final saved = widget.progress.lastStepFor(widget.lesson.id) ?? 0;
     _index = saved.clamp(0, _steps.length - 1).toInt();
     _controller = PageController(initialPage: _index);
     _speakIfPractice(_steps[_index]);
@@ -74,7 +74,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     super.dispose();
   }
 
-  void _speakIfPractice(_LessonStep step) {
+  void _speakIfPractice(_Step step) {
     if (step is _PracticeStep) {
       _narration.speak(step.target.word);
     }
@@ -98,7 +98,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         title: const Text('Lesson complete! 🎉'),
-        content: Text('Great job finishing "${widget.book.title}".'),
+        content: Text('Great job finishing "${widget.lesson.title}".'),
         actions: [
           FilledButton(
             onPressed: () {
@@ -115,9 +115,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void _onPageChanged(int i) {
     _narration.stop();
     setState(() => _index = i);
-    widget.progress.setLastStep(widget.book.id, i);
+    widget.progress.setLastStep(widget.lesson.id, i);
     if (i == _steps.length - 1) {
-      widget.progress.markCompleted(widget.book.id);
+      widget.progress.markCompleted(widget.lesson.id);
     }
     _speakIfPractice(_steps[i]);
   }
@@ -132,13 +132,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final book = widget.book;
+    final lesson = widget.lesson;
 
     return Scaffold(
       body: ListenableBuilder(
         listenable: Listenable.merge([widget.progress, _narration]),
         builder: (context, _) {
-          final isFavorite = widget.progress.isFavorite(book.id);
+          final isFavorite = widget.progress.isFavorite(lesson.id);
           return SafeArea(
             child: Column(
               children: [
@@ -164,7 +164,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       ),
                       IconButton(
                         onPressed: () =>
-                            widget.progress.toggleFavorite(book.id),
+                            widget.progress.toggleFavorite(lesson.id),
                         icon: Icon(
                           isFavorite
                               ? Icons.favorite_rounded
@@ -184,15 +184,15 @@ class _ReaderScreenState extends State<ReaderScreen> {
                     itemBuilder: (context, i) {
                       final step = _steps[i];
                       return switch (step) {
-                        _LearnStep() => _LearnPageView(
-                            page: step.page,
+                        _LearnStep() => _LearnView(
+                            word: step.word,
                             isSpeaking: _narration.isSpeaking,
                             isLastStep: i == _steps.length - 1,
                             onSpeak: () => _toggleSpeak(
-                                '${step.page.word}. ${step.page.text}'),
+                                '${step.word.word}. ${step.word.text}'),
                             onNext: () => _goToStep(i + 1),
                           ),
-                        _PracticeStep() => _PracticePageView(
+                        _PracticeStep() => _PracticeView(
                             key: ValueKey('practice-$i-${step.target.word}'),
                             target: step.target,
                             choices: step.choices,
@@ -214,16 +214,16 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 }
 
-class _LearnPageView extends StatelessWidget {
-  const _LearnPageView({
-    required this.page,
+class _LearnView extends StatelessWidget {
+  const _LearnView({
+    required this.word,
     required this.isSpeaking,
     required this.isLastStep,
     required this.onSpeak,
     required this.onNext,
   });
 
-  final BookPage page;
+  final LessonWord word;
   final bool isSpeaking;
   final bool isLastStep;
   final VoidCallback onSpeak;
@@ -239,7 +239,7 @@ class _LearnPageView extends StatelessWidget {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: page.color,
+                color: word.color,
                 borderRadius: BorderRadius.circular(32),
               ),
               child: Stack(
@@ -248,10 +248,10 @@ class _LearnPageView extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(page.emoji, style: const TextStyle(fontSize: 120)),
+                        Text(word.emoji, style: const TextStyle(fontSize: 120)),
                         const SizedBox(height: 16),
                         Text(
-                          page.word,
+                          word.word,
                           style: const TextStyle(
                             fontSize: 44,
                             fontWeight: FontWeight.w900,
@@ -262,7 +262,7 @@ class _LearnPageView extends StatelessWidget {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 28),
                           child: Text(
-                            page.text,
+                            word.text,
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                                 fontSize: 18,
@@ -310,8 +310,8 @@ class _LearnPageView extends StatelessWidget {
   }
 }
 
-class _PracticePageView extends StatefulWidget {
-  const _PracticePageView({
+class _PracticeView extends StatefulWidget {
+  const _PracticeView({
     super.key,
     required this.target,
     required this.choices,
@@ -320,21 +320,21 @@ class _PracticePageView extends StatefulWidget {
     required this.onCorrect,
   });
 
-  final BookPage target;
-  final List<BookPage> choices;
+  final LessonWord target;
+  final List<LessonWord> choices;
   final bool isSpeaking;
   final VoidCallback onReplay;
   final VoidCallback onCorrect;
 
   @override
-  State<_PracticePageView> createState() => _PracticePageViewState();
+  State<_PracticeView> createState() => _PracticeViewState();
 }
 
-class _PracticePageViewState extends State<_PracticePageView> {
-  BookPage? _correctSelected;
-  BookPage? _wrongTapped;
+class _PracticeViewState extends State<_PracticeView> {
+  LessonWord? _correctSelected;
+  LessonWord? _wrongTapped;
 
-  void _choose(BookPage choice) {
+  void _choose(LessonWord choice) {
     if (_correctSelected != null) return;
     if (choice.word == widget.target.word) {
       setState(() {
@@ -377,7 +377,7 @@ class _PracticePageViewState extends State<_PracticePageView> {
               children: [
                 for (final choice in widget.choices)
                   _ChoiceCard(
-                    page: choice,
+                    word: choice,
                     isCorrect: _correctSelected == choice,
                     isWrong: _wrongTapped == choice,
                     onTap: () => _choose(choice),
@@ -393,13 +393,13 @@ class _PracticePageViewState extends State<_PracticePageView> {
 
 class _ChoiceCard extends StatelessWidget {
   const _ChoiceCard({
-    required this.page,
+    required this.word,
     required this.isCorrect,
     required this.isWrong,
     required this.onTap,
   });
 
-  final BookPage page;
+  final LessonWord word;
   final bool isCorrect;
   final bool isWrong;
   final VoidCallback onTap;
@@ -410,7 +410,7 @@ class _ChoiceCard extends StatelessWidget {
         ? const Color(0xFFDCF0DC)
         : isWrong
             ? const Color(0xFFF6D3D3)
-            : page.color;
+            : word.color;
     final Color? borderColor = isCorrect
         ? const Color(0xFF4CAF50)
         : isWrong
@@ -433,9 +433,9 @@ class _ChoiceCard extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(page.emoji, style: const TextStyle(fontSize: 56)),
+                Text(word.emoji, style: const TextStyle(fontSize: 56)),
                 const SizedBox(height: 8),
-                Text(page.word,
+                Text(word.word,
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 if (isCorrect)
                   const Padding(

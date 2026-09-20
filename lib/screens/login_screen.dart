@@ -4,7 +4,7 @@ import '../data/demo_accounts.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
-import '../services/reading_progress_service.dart';
+import '../services/progress_service.dart';
 import 'path_screen.dart';
 
 /// Email/password sign-in and sign-up, backed by Firebase Authentication.
@@ -19,7 +19,7 @@ class LoginScreen extends StatefulWidget {
 
   final EntitlementService entitlements;
   final AuthService auth;
-  final ReadingProgressService progress;
+  final ProgressService progress;
   final EnergyService energy;
 
   @override

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../data/book_catalog.dart';
+import '../data/lesson_catalog.dart';
 import '../services/entitlement_service.dart';
 
 /// The one upgrade in the app: All Access removes the energy cap entirely.

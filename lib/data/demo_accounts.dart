@@ -21,13 +21,13 @@ class DemoAccount {
 
 const List<DemoAccount> demoAccounts = [
   DemoAccount(
-    email: 'subscriber@demo.storyshelf.app',
+    email: 'subscriber@demo.peekado.app',
     password: 'demo1234',
     label: 'All Access subscriber (unlimited energy)',
     subscriptionActive: true,
   ),
   DemoAccount(
-    email: 'newuser@demo.storyshelf.app',
+    email: 'newuser@demo.peekado.app',
     password: 'demo1234',
     label: 'Brand-new user (limited energy)',
     subscriptionActive: false,

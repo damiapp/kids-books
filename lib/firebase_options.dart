@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Firebase configuration for Story Shelf.
+/// Firebase configuration for Peekado.
 ///
 /// These are PLACEHOLDER values — sign-in will fail with "API key not
 /// valid" until you swap them for your own project's config. Get them from

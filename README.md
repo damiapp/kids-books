@@ -1,5 +1,5 @@
 
-# Story Shelf — a Duolingo-style lesson app for kids 3+ (Android first)
+# Peekado — a Duolingo-style lesson app for kids 3+ (Android first)
 
 A Flutter app of short listen-then-practice lessons for early learners. Each
 lesson teaches a word (picture + sound), then quizzes it back with a
@@ -21,7 +21,7 @@ This folder contains only `lib/` and `pubspec.yaml`. Generate the Android
 platform folders, then run:
 
 ```bash
-cd kids_books
+cd peekado
 flutter create .            # adds android/ (and other platforms) around lib/
 flutter pub get
 flutter run                 # with an Android device/emulator connected
@@ -44,7 +44,7 @@ in the cloud:
 2. The build runs automatically (or trigger it from the **Actions** tab →
    *Build APK* → *Run workflow*).
 3. When it finishes (~2–3 min), open the run and download the
-   **kids-books-apk** artifact — inside is `app-release.apk`.
+   **peekado-apk** artifact — inside is `app-release.apk`.
 4. Copy it to your phone, allow "install unknown apps" for your file manager,
    and tap to install.
 
@@ -72,7 +72,8 @@ valid" error until you plug in a real project:
 2. **Build → Authentication → Get started → Sign-in method** → enable
    **Email/Password**.
 3. **Project settings → General → Your apps** → add an Android app (package
-   name `rs.stasa.kids_books`, matching the workflow's `--org rs.stasa`).
+   name `app.peekado`, matching the workflow's `--org app --project-name
+   peekado`).
 4. Copy the config values shown (API key, App ID, Messaging sender ID,
    Project ID) into `lib/firebase_options.dart`, replacing the
    `YOUR_FIREBASE_*` placeholders in the `android` `FirebaseOptions`.
@@ -91,8 +92,8 @@ Firebase entirely and set local entitlements to match:
 
 | Account | Email | Password | Entitlements |
 |---|---|---|---|
-| 👑 All Access subscriber | `subscriber@demo.storyshelf.app` | `demo1234` | Subscription active — unlimited energy |
-| 🙂 Brand-new user | `newuser@demo.storyshelf.app` | `demo1234` | Free plan — limited energy, refills over time |
+| 👑 All Access subscriber | `subscriber@demo.peekado.app` | `demo1234` | Subscription active — unlimited energy |
+| 🙂 Brand-new user | `newuser@demo.peekado.app` | `demo1234` | Free plan — limited energy, refills over time |
 
 Tap either button on the login screen to sign in instantly, or type the
 credentials by hand. These only work for sign-in, not the "create account"
@@ -104,30 +105,30 @@ flow, and never touch your Firebase project.
 
 ```
 lib/
-  models/book.dart                        Book (a lesson: ageRange, genres, pages) + BookPage
-  data/book_catalog.dart                  the 3 sample lessons + the path's units
+  models/lesson.dart                      Lesson (ageRange, genres, words) + LessonWord
+  data/lesson_catalog.dart                the 3 sample lessons + the path's units
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
   services/energy_service.dart            energy pool: spend, regen over time
-  services/reading_progress_service.dart  per-lesson step/completion + favorites
+  services/progress_service.dart          per-lesson step/completion + favorites
   services/narration_service.dart         read-aloud / practice-prompt TTS
   services/auth_service.dart              Firebase email/password sign-in
   screens/landing_screen.dart             first screen: app name + tagline
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
   screens/login_screen.dart               email/password sign in & sign up
   screens/path_screen.dart                learning path: units + winding lesson trail
-  screens/reader_screen.dart              lesson player: learn + practice steps
+  screens/lesson_screen.dart              lesson player: learn + practice steps
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
 ```
 
-**The path:** `BookCatalog.units` defines the trail — each unit is a
+**The path:** `LessonCatalog.units` defines the trail — each unit is a
 banner plus an ordered list of lesson ids, closed out by a trophy node.
 Order is what gates progression: a lesson unlocks once the one before it
 is finished, so the whole path is one flat sequence split into units. Add
-a lesson to `books` and drop its id into a unit's `bookIds` to extend it.
+a lesson to `lessons` and drop its id into a unit's `lessonIds` to extend it.
 
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically
@@ -137,7 +138,7 @@ over time (default 1 per 10 minutes). An active subscription
 the lesson or shows the "out of energy" dialog. Energy is only spent the
 *first* time a lesson is opened; resuming or replaying one already started
 is always free. Per-lesson progress (last step, completion) and favorites
-live in `ReadingProgressService`.
+live in `ProgressService`.
 
 This is why new lessons ship for free users too: adding one to the catalog
 needs no per-lesson wiring — everyone already passes through the same
@@ -180,7 +181,7 @@ Also uncomment the RevenueCat import at the top.
 
 Right now the catalog is bundled in the app, so a new lesson means a new
 release. To publish without going through review each time, move
-`book_catalog.dart` to a **JSON manifest + images served from Cloudflare R2**
+`lesson_catalog.dart` to a **JSON manifest + images served from Cloudflare R2**
 (zero egress fees) and fetch it at startup. Every learner sees new lessons
 instantly — access is decided by energy/subscription, not by which lessons
 shipped inside the app.
@@ -188,6 +189,6 @@ shipped inside the app.
 ## 5. Replacing the placeholder art
 
 Pages use emoji as stand-in art. For real illustrations, add an `imageUrl`
-(R2-hosted) or bundled `imageAsset` to `BookPage` and render it in
-`reader_screen.dart` instead of the emoji `Text` — both the learn step and
+(R2-hosted) or bundled `imageAsset` to `LessonWord` and render it in
+`lesson_screen.dart` instead of the emoji `Text` — both the learn step and
 the practice-step choice cards use it.

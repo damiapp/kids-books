@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
-import '../services/reading_progress_service.dart';
+import '../services/progress_service.dart';
 import 'onboarding_screen.dart';
 
 /// First screen a new visitor sees: app name, tagline, and a way in.
@@ -18,7 +18,7 @@ class LandingScreen extends StatelessWidget {
 
   final EntitlementService entitlements;
   final AuthService auth;
-  final ReadingProgressService progress;
+  final ProgressService progress;
   final EnergyService energy;
 
   @override
@@ -43,7 +43,7 @@ class LandingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               const Text(
-                'Story Shelf',
+                'Peekado',
                 style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 10),

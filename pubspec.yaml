@@ -1,11 +1,11 @@
-name: kids_books
-description: A Duolingo-style lesson app for kids 3+ — listen, then tap the match. Free energy refills over time; All Access removes the cap.
+name: peekado
+description: Peekado — short listen-and-tap lessons for preschoolers. Free energy refills over time; All Access removes the cap.
 publish_to: "none"
 # Still pre-release. Convention while in dev: bump PATCH for small fixes,
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.5.0+10
+version: 0.6.0+11
 
 environment:
   sdk: ">=3.6.0 <4.0.0"

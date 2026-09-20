@@ -24,7 +24,8 @@ jobs:
       # This repo ships only lib/ + pubspec.yaml, so generate the Android
       # project files. --platforms=android keeps it minimal and skips the
       # files that already exist (your lib/ and pubspec.yaml are untouched).
-      - run: flutter create --platforms=android --org rs.stasa --project-name kids_books .
+      # --org + --project-name set the Android applicationId: app.peekado.
+      - run: flutter create --platforms=android --org app --project-name peekado .
 
       - run: flutter pub get
 
@@ -32,5 +33,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: kids-books-apk
+          name: peekado-apk
           path: build/app/outputs/flutter-apk/app-release.apk

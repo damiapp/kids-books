@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// One page of a book: a picture, a word, and a simple line of text. Each
-/// page becomes a "learn" step, immediately followed by a "practice" step
-/// (tap-the-match quiz) in the lesson player.
+/// One word a lesson teaches: a picture, the word itself, and a simple
+/// sentence using it. Each becomes a "learn" step, immediately followed
+/// by a "practice" step (tap-the-match) in the lesson player.
 /// [emoji] is placeholder art — swap for a bundled asset or a Cloudflare R2
 /// image URL when you have real illustrations.
-class BookPage {
-  const BookPage({
+class LessonWord {
+  const LessonWord({
     required this.emoji,
     required this.word,
     required this.text,
@@ -19,15 +19,15 @@ class BookPage {
   final Color color;
 }
 
-/// A single lesson (built from what used to be a "book") in the catalog.
-class Book {
-  const Book({
+/// A single lesson on the learning path.
+class Lesson {
+  const Lesson({
     required this.id,
     required this.title,
     required this.subtitle,
     required this.coverEmoji,
     required this.coverColor,
-    required this.pages,
+    required this.words,
     required this.ageRange,
     required this.genres,
   });
@@ -44,5 +44,5 @@ class Book {
   /// e.g. ["Animals", "Nature"]. A lesson can belong to more than one.
   final List<String> genres;
 
-  final List<BookPage> pages;
+  final List<LessonWord> words;
 }
