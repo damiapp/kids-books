@@ -1,4 +1,4 @@
-name: Build
+name: Build APK
 
 on:
   workflow_dispatch:        # lets you run it manually from the Actions tab
@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  android:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,32 +35,3 @@ jobs:
         with:
           name: peekado-apk
           path: build/app/outputs/flutter-apk/app-release.apk
-
-  # Compile check only — see README §1d. Without an Apple Developer
-  # account there's nothing to sign with, and an unsigned .app can't be
-  # installed on a phone. It still catches iOS-only breakage (pods,
-  # deployment targets, a plugin with no iOS implementation) early.
-  # macOS runners are billed at 10x, but this repo is public, so the
-  # minutes are free.
-  ios:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-
-      - run: flutter create --platforms=ios --org app --project-name peekado .
-
-      - run: python3 .github/scripts/ios_deployment_target.py
-
-      - run: flutter pub get
-
-      - run: flutter build ios --release --no-codesign
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: peekado-ios-unsigned
-          path: build/ios/iphoneos/Runner.app

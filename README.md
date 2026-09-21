@@ -44,7 +44,7 @@ in the cloud:
 
 1. Create a new GitHub repo and push this folder to its `main` branch.
 2. The build runs automatically (or trigger it from the **Actions** tab →
-   *Build* → *Run workflow*).
+   *Build APK* → *Run workflow*).
 3. When it finishes (~2–3 min), open the run and download the
    **peekado-apk** artifact — inside is `app-release.apk`.
 4. Copy it to your phone, allow "install unknown apps" for your file manager,
@@ -75,13 +75,10 @@ valid" error until you plug in a real project:
    **Email/Password**.
 3. **Project settings → General → Your apps** → add an Android app (package
    name `app.peekado`, matching the workflow's `--org app --project-name
-   peekado`). Add an iOS app with the same id as the bundle id if you're
-   building for iPhone too (§1d) — it's a separate registration with its
-   own API key and app id.
+   peekado`).
 4. Copy the config values shown (API key, App ID, Messaging sender ID,
    Project ID) into `lib/firebase_options.dart`, replacing the
-   `YOUR_FIREBASE_*` placeholders in the `android` (and `ios`)
-   `FirebaseOptions`.
+   `YOUR_FIREBASE_*` placeholders in the `android` `FirebaseOptions`.
 
 Unlike the RevenueCat/Play key elsewhere in this app, Firebase's client
 config isn't a secret — it's meant to ship inside the app. Access is
@@ -103,58 +100,6 @@ Firebase entirely and set local entitlements to match:
 Tap either button on the login screen to sign in instantly, or type the
 credentials by hand. These only work for sign-in, not the "create account"
 flow, and never touch your Firebase project.
-
----
-
-## 1d. iPhone builds
-
-The same workflow has an **`ios` job** on a macOS runner that runs
-`flutter build ios --release --no-codesign`. macOS runners bill at 10x
-the rate of Linux ones, but this repo is public, so those minutes are
-free.
-
-**What that job is, and isn't:** it's a compile check. It proves the app
-builds for iOS — pods resolve, every plugin has an iOS implementation,
-the deployment target lines up — and it uploads a
-`peekado-ios-unsigned` artifact. It does **not** produce something you
-can install on a phone. iOS has no equivalent of sideloading an APK: an
-app must be signed by a registered Apple developer, and the phone checks
-that signature at install time.
-
-**To actually get it onto an iPhone** you need an
-[Apple Developer Program](https://developer.apple.com/programs/)
-membership (**$99/year** — there's no free tier that CI can use). With
-one, the path is entirely in CI, no Mac required:
-
-1. In **App Store Connect**, create the app record (bundle id
-   `app.peekado`) and an **API key** (Users and Access → Integrations).
-2. Create a **distribution certificate** and an **App Store provisioning
-   profile**, and export the certificate as a `.p12`.
-3. Add them as repo secrets — the certificate (base64), its password,
-   the profile (base64), and the API key id/issuer id/`.p8` contents.
-4. Swap the `ios` job's `--no-codesign` for an import step
-   ([`apple-actions/import-codesign-certs`](https://github.com/apple-actions/import-codesign-certs)),
-   `flutter build ipa`, and an upload to TestFlight with
-   `xcrun altool`/`fastlane pilot`.
-5. Install from the **TestFlight** app on the phone. Builds arrive as
-   updates, so — unlike the Android side today — there's no
-   uninstall-and-lose-progress step.
-
-**Without the $99:** a free Apple ID can sign an app for your own device
-through Xcode or Sideloadly, but it expires after **7 days** and needs a
-Mac (or Windows, for Sideloadly) with the phone plugged in. CI can't do
-it, so it doesn't fit this workflow.
-
-Also worth knowing before shipping to iOS: the subscription has to go
-through **StoreKit / App Store Connect** rather than Google Play —
-RevenueCat covers both behind the same `EntitlementService`, but it's a
-second set of products to configure (§3).
-
-The `ios` job regenerates `ios/` with `flutter create` on every run, the
-same way the Android job does, so
-`.github/scripts/ios_deployment_target.py` re-applies the iOS 15
-deployment target each time — Flutter's template still writes 13, and
-`firebase_core` 4.x refuses to install pods below 15.
 
 ---
 
