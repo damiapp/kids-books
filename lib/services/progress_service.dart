@@ -2,23 +2,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Tracks per-lesson progress (last step reached, completion) and
-/// favorites. Local only — same SharedPreferences-backed pattern as
-/// DemoEntitlementService.
+/// Tracks per-lesson progress: the last step reached, and whether the
+/// lesson is finished. Local only — same SharedPreferences-backed
+/// pattern as DemoEntitlementService.
 class ProgressService extends ChangeNotifier {
   static const _stepKey = 'lesson_last_step';
   static const _completedKey = 'lesson_completed_ids';
-  static const _favoritesKey = 'lesson_favorite_ids';
 
   final Map<String, int> _lastStep = {};
   final Set<String> _completed = {};
-  final Set<String> _favorites = {};
 
   int? lastStepFor(String lessonId) => _lastStep[lessonId];
 
   bool isCompleted(String lessonId) => _completed.contains(lessonId);
-
-  bool isFavorite(String lessonId) => _favorites.contains(lessonId);
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -35,12 +31,6 @@ class ProgressService extends ChangeNotifier {
         ..clear()
         ..addAll(rawCompleted);
     }
-    final rawFavorites = prefs.getStringList(_favoritesKey);
-    if (rawFavorites != null) {
-      _favorites
-        ..clear()
-        ..addAll(rawFavorites);
-    }
     notifyListeners();
   }
 
@@ -56,15 +46,6 @@ class ProgressService extends ChangeNotifier {
     if (!_completed.add(lessonId)) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_completedKey, _completed.toList());
-    notifyListeners();
-  }
-
-  Future<void> toggleFavorite(String lessonId) async {
-    if (!_favorites.remove(lessonId)) {
-      _favorites.add(lessonId);
-    }
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_favoritesKey, _favorites.toList());
     notifyListeners();
   }
 }

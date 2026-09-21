@@ -144,13 +144,10 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lesson = widget.lesson;
-
     return Scaffold(
       body: ListenableBuilder(
         listenable: Listenable.merge([widget.progress, _narration]),
         builder: (context, _) {
-          final isFavorite = widget.progress.isFavorite(lesson.id);
           return SafeArea(
             child: Column(
               children: [
@@ -174,16 +171,7 @@ class _LessonScreenState extends State<LessonScreen> {
                           ),
                         ),
                       ),
-                      IconButton(
-                        onPressed: () =>
-                            widget.progress.toggleFavorite(lesson.id),
-                        icon: Icon(
-                          isFavorite
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_border_rounded,
-                          color: isFavorite ? const Color(0xFFE0637A) : null,
-                        ),
-                      ),
+                      const SizedBox(width: 12),
                     ],
                   ),
                 ),

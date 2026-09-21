@@ -113,7 +113,7 @@ lib/
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
   services/energy_service.dart            energy pool: spend, regen over time
-  services/progress_service.dart          per-lesson step/completion + favorites
+  services/progress_service.dart          per-lesson step + completion
   services/narration_service.dart         read-aloud / practice-prompt TTS
   services/auth_service.dart              Firebase email/password sign-in
   screens/landing_screen.dart             first screen: app name + tagline
@@ -152,8 +152,8 @@ over time (default 1 per 10 minutes). An active subscription
 `PathScreen._openLesson` is the one place that decides whether a tap opens
 the lesson or shows the "out of energy" dialog. Energy is only spent the
 *first* time a lesson is opened; resuming or replaying one already started
-is always free. Per-lesson progress (last step, completion) and favorites
-live in `ProgressService`.
+is always free. Per-lesson progress (last step, completion) lives in
+`ProgressService`.
 
 This is why new lessons ship for free users too: adding one to the catalog
 needs no per-lesson wiring — everyone already passes through the same
