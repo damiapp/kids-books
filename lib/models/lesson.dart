@@ -28,8 +28,6 @@ class Lesson {
     required this.coverEmoji,
     required this.coverColor,
     required this.words,
-    required this.ageRange,
-    required this.genres,
   });
 
   final String id;
@@ -37,12 +35,6 @@ class Lesson {
   final String subtitle;
   final String coverEmoji;
   final Color coverColor;
-
-  /// Recommended learner age, e.g. "1-3", "3-6".
-  final String ageRange;
-
-  /// e.g. ["Animals", "Nature"]. A lesson can belong to more than one.
-  final List<String> genres;
 
   final List<LessonWord> words;
 }

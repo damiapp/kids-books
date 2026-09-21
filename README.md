@@ -105,8 +105,8 @@ flow, and never touch your Firebase project.
 
 ```
 lib/
-  models/lesson.dart                      Lesson (ageRange, genres, words) + LessonWord
-  data/lesson_catalog.dart                the 3 sample lessons + the path's units
+  models/lesson.dart                      Lesson (title, cover, words) + LessonWord
+  data/lesson_catalog.dart                the 14 lessons + the path's units
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
