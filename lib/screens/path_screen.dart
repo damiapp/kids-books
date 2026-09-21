@@ -517,15 +517,15 @@ class _PathRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Sine offset gives the centre → right → right → centre → left → left
-    // zigzag of a Duolingo-style trail.
-    final width = MediaQuery.sizeOf(context).width;
-    final amplitude = min(96.0, width * 0.24);
-    final dx = sin(index * pi / 3) * amplitude;
+    // zigzag of a Duolingo-style trail. This has to be Align, not
+    // Transform.translate: a transform only shifts the painting, leaving
+    // the hit box centred, so every offset node ignored taps.
+    final t = sin(index * pi / 3);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Transform.translate(
-        offset: Offset(dx, 0),
+      child: Align(
+        alignment: Alignment(t * 0.62, 0),
         child: Column(
           children: [
             child,
@@ -594,7 +594,12 @@ class _PathNode extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (showStart) ...[
-          _StartBubble(color: scheme.primary),
+          // The bubble is the most inviting thing on screen — it should
+          // start the lesson too, not just point at the node.
+          GestureDetector(
+            onTap: onTap,
+            child: _StartBubble(color: scheme.primary),
+          ),
           const SizedBox(height: 6),
         ],
         SizedBox(
