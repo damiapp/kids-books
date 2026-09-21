@@ -129,17 +129,21 @@ lib/
 **The path:** `LessonCatalog.units` defines the trail — each unit is an
 ordered list of lesson ids, closed out by a trophy node. Order is what
 gates progression: a lesson unlocks once the one before it is finished,
-so the whole path is one flat sequence split into units. Add a lesson to
-`lessons` and drop its id into a unit's `lessonIds` to extend it.
+so the whole path is one flat sequence split into units. The trophy sits
+*in* that sequence — it's the last step of its unit, so the next unit
+stays locked until the review is finished, not just the lessons before
+it. Add a lesson to `lessons` and drop its id into a unit's `lessonIds`
+to extend it.
 
 Each unit's banner lives on the map and sticks to the top while that
 unit is on screen, until the next unit's banner pushes it out. That's
 what `SliverMainAxisGroup` buys: pinned headers sitting directly in the
 scroll view would pile up on each other instead. The trophy
 plays that unit's **review** — a six-word mix built at runtime by
-`_reviewLesson`, round-robined across every lesson in the unit so all of
+`_buildReview`, round-robined across every lesson in the unit so all of
 them are represented. It's tracked as `review_<unit id>`, seeded by the
-unit id so a half-finished review resumes on the right word.
+unit id so a half-finished review resumes on the right word, and it
+counts toward the banner's `n/total` alongside the unit's lessons.
 
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically

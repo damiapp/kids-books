@@ -42,11 +42,17 @@ class _PathScreenState extends State<PathScreen> {
     widget.energy.refresh();
   }
 
+  /// One review per unit, built once — they're the same every time, and
+  /// _stateOf walks this list for every node on screen.
+  late final Map<String, Lesson> _reviews = {
+    for (final unit in LessonCatalog.units) unit.id: _buildReview(unit),
+  };
+
   /// A unit's trophy lesson: a shuffled mix pulled from every lesson in
   /// that unit, so it tests the whole section rather than one topic. The
   /// seed is the unit id, so the order is stable — a half-finished review
   /// resumes on the word it left off on.
-  Lesson _reviewLesson(LessonUnit unit) {
+  Lesson _buildReview(LessonUnit unit) {
     final perLesson = [
       for (final id in unit.lessonIds)
         LessonCatalog.byId(id).words.toList()
@@ -77,10 +83,14 @@ class _PathScreenState extends State<PathScreen> {
     );
   }
 
-  /// Every lesson, in unlock order.
+  /// Every lesson in unlock order, each unit's review included at the end
+  /// of that unit. The review sits in the chain so finishing it is what
+  /// opens the next unit — otherwise the trophy is skippable.
   List<Lesson> get _orderedLessons => [
-        for (final unit in LessonCatalog.units)
+        for (final unit in LessonCatalog.units) ...[
           for (final id in unit.lessonIds) LessonCatalog.byId(id),
+          _reviews[unit.id]!,
+        ],
       ];
 
   /// The next lesson to play — the first one not yet finished.
@@ -101,6 +111,14 @@ class _PathScreenState extends State<PathScreen> {
     final step = widget.progress.lastStepFor(lesson.id);
     if (step == null) return null;
     return (step + 1) / (lesson.words.length * 2);
+  }
+
+  /// Steps of a unit finished, its review included — that's what the
+  /// banner counts, since the unit isn't done until the trophy is.
+  int _unitDoneCount(LessonUnit unit) {
+    final done =
+        unit.lessonIds.where(widget.progress.isCompleted).length;
+    return done + (widget.progress.isCompleted(_reviews[unit.id]!.id) ? 1 : 0);
   }
 
   Future<void> _openLesson(BuildContext context, Lesson lesson) async {
@@ -214,32 +232,28 @@ class _PathScreenState extends State<PathScreen> {
           progress: state == _NodeState.current ? _progressOf(lesson) : null,
           showStart: state == _NodeState.current,
           onTap: state == _NodeState.locked
-              ? () => _showLocked(
-                  context, 'Finish the lesson before this one first.')
+              ? () => _showLocked(context, 'Finish the previous lesson first.')
               : () => _openLesson(context, lesson),
         ),
       ));
     }
 
-    final unitDone = unit.lessonIds.every(widget.progress.isCompleted);
-    final review = _reviewLesson(unit);
-    final reviewDone = widget.progress.isCompleted(review.id);
+    final review = _reviews[unit.id]!;
+    final reviewState = _stateOf(review);
 
     rows.add(_PathRow(
       index: unit.lessonIds.length,
       label: 'Unit review',
       child: _PathNode(
-        state: reviewDone
-            ? _NodeState.completed
-            : unitDone
-                ? _NodeState.current
-                : _NodeState.locked,
+        state: reviewState,
         icon: Icons.emoji_events_rounded,
-        progress: unitDone && !reviewDone ? _progressOf(review) : null,
-        onTap: unitDone
-            ? () => _openLesson(context, review)
-            : () => _showLocked(
-                context, 'Finish every lesson in this unit first.'),
+        progress:
+            reviewState == _NodeState.current ? _progressOf(review) : null,
+        showStart: reviewState == _NodeState.current,
+        onTap: reviewState == _NodeState.locked
+            ? () => _showLocked(
+                context, 'Finish every lesson in this unit first.')
+            : () => _openLesson(context, review),
       ),
     ));
 
@@ -288,9 +302,11 @@ class _PathScreenState extends State<PathScreen> {
                               pinned: true,
                               delegate: _UnitHeaderDelegate(
                                 unit: unit,
-                                doneCount: unit.lessonIds
-                                    .where(widget.progress.isCompleted)
-                                    .length,
+                                // The review is a step of the unit too —
+                                // counting only lessons would read "3/3"
+                                // while the trophy is still unplayed.
+                                doneCount: _unitDoneCount(unit),
+                                total: unit.lessonIds.length + 1,
                               ),
                             ),
                             SliverToBoxAdapter(
@@ -419,10 +435,15 @@ class _Stat extends StatelessWidget {
 /// is on screen; the next unit's banner then pushes it out (see the
 /// SliverMainAxisGroup in build).
 class _UnitHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _UnitHeaderDelegate({required this.unit, required this.doneCount});
+  _UnitHeaderDelegate({
+    required this.unit,
+    required this.doneCount,
+    required this.total,
+  });
 
   final LessonUnit unit;
   final int doneCount;
+  final int total;
 
   static const _height = 88.0;
 
@@ -437,20 +458,25 @@ class _UnitHeaderDelegate extends SliverPersistentHeaderDelegate {
     // Opaque, so trail nodes scroll behind the banner rather than through it.
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
-      child: _UnitBanner(unit: unit, doneCount: doneCount),
+      child: _UnitBanner(unit: unit, doneCount: doneCount, total: total),
     );
   }
 
   @override
   bool shouldRebuild(covariant _UnitHeaderDelegate old) =>
-      old.unit != unit || old.doneCount != doneCount;
+      old.unit != unit || old.doneCount != doneCount || old.total != total;
 }
 
 class _UnitBanner extends StatelessWidget {
-  const _UnitBanner({required this.unit, required this.doneCount});
+  const _UnitBanner({
+    required this.unit,
+    required this.doneCount,
+    required this.total,
+  });
 
   final LessonUnit unit;
   final int doneCount;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +518,7 @@ class _UnitBanner extends StatelessWidget {
               ),
             ),
             Text(
-              '$doneCount/${unit.lessonIds.length}',
+              '$doneCount/$total',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
