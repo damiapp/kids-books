@@ -58,6 +58,13 @@ class _LessonScreenState extends State<LessonScreen> {
   final _narration = NarrationService();
   late int _index;
 
+  /// Practice steps answered correctly this sitting. A practice step that
+  /// isn't in here can't be swiped past — the question has to be answered.
+  final Set<int> _answered = {};
+
+  bool get _canSwipe =>
+      _steps[_index] is! _PracticeStep || _answered.contains(_index);
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +87,11 @@ class _LessonScreenState extends State<LessonScreen> {
     }
   }
 
+  void _onAnswered(int stepIndex) {
+    setState(() => _answered.add(stepIndex));
+    _goToStep(stepIndex + 1);
+  }
+
   void _goToStep(int i) {
     if (i >= _steps.length) {
       _finishLesson();
@@ -93,6 +105,9 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   Future<void> _finishLesson() async {
+    // Completion is reaching the end, not landing on the last question —
+    // the final practice step still has to be answered to get here.
+    widget.progress.markCompleted(widget.lesson.id);
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -116,9 +131,6 @@ class _LessonScreenState extends State<LessonScreen> {
     _narration.stop();
     setState(() => _index = i);
     widget.progress.setLastStep(widget.lesson.id, i);
-    if (i == _steps.length - 1) {
-      widget.progress.markCompleted(widget.lesson.id);
-    }
     _speakIfPractice(_steps[i]);
   }
 
@@ -178,7 +190,11 @@ class _LessonScreenState extends State<LessonScreen> {
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
-                    physics: const NeverScrollableScrollPhysics(),
+                    // Learn steps swipe freely; an unanswered practice step
+                    // is a wall until the right picture is tapped.
+                    physics: _canSwipe
+                        ? const PageScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
                     onPageChanged: _onPageChanged,
                     itemCount: _steps.length,
                     itemBuilder: (context, i) {
@@ -187,10 +203,8 @@ class _LessonScreenState extends State<LessonScreen> {
                         _LearnStep() => _LearnView(
                             word: step.word,
                             isSpeaking: _narration.isSpeaking,
-                            isLastStep: i == _steps.length - 1,
                             onSpeak: () => _toggleSpeak(
                                 '${step.word.word}. ${step.word.text}'),
-                            onNext: () => _goToStep(i + 1),
                           ),
                         _PracticeStep() => _PracticeView(
                             key: ValueKey('practice-$i-${step.target.word}'),
@@ -199,7 +213,7 @@ class _LessonScreenState extends State<LessonScreen> {
                             isSpeaking: _narration.isSpeaking,
                             onReplay: () =>
                                 _narration.speak(step.target.word),
-                            onCorrect: () => _goToStep(i + 1),
+                            onCorrect: () => _onAnswered(i),
                           ),
                       };
                     },
@@ -218,16 +232,12 @@ class _LearnView extends StatelessWidget {
   const _LearnView({
     required this.word,
     required this.isSpeaking,
-    required this.isLastStep,
     required this.onSpeak,
-    required this.onNext,
   });
 
   final LessonWord word;
   final bool isSpeaking;
-  final bool isLastStep;
   final VoidCallback onSpeak;
-  final VoidCallback onNext;
 
   @override
   Widget build(BuildContext context) {
@@ -288,22 +298,63 @@ class _LearnView extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onNext,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                shape:
-                    RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              ),
-              child: Text(
-                isLastStep ? 'Finish' : 'Next',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
+          const SizedBox(height: 18),
+          const _SwipeHint(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Nudges the swipe, since a three-year-old won't guess it. Drifts right
+/// and back so it reads as "keep going this way".
+class _SwipeHint extends StatefulWidget {
+  const _SwipeHint();
+
+  @override
+  State<_SwipeHint> createState() => _SwipeHintState();
+}
+
+class _SwipeHintState extends State<_SwipeHint>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _drift = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOut,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    return AnimatedBuilder(
+      animation: _drift,
+      builder: (context, child) => Transform.translate(
+        offset: Offset(_drift.value * 12, 0),
+        child: child,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'Swipe to keep going',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: color,
             ),
           ),
+          const SizedBox(width: 6),
+          Icon(Icons.arrow_forward_rounded, size: 20, color: color),
         ],
       ),
     );

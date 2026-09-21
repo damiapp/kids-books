@@ -4,6 +4,8 @@
 A Flutter app of short listen-then-practice lessons for early learners. Each
 lesson teaches a word (picture + sound), then quizzes it back with a
 tap-the-match exercise — kids see it, hear it, then try it themselves.
+You swipe between steps; a practice step won't let you swipe past until
+the right picture is tapped.
 
 Access is **energy**, not per-item purchase: everyone gets a capped pool of
 energy that's spent to start a lesson and slowly refills over time; **All
@@ -118,7 +120,7 @@ lib/
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
   screens/login_screen.dart               email/password sign in & sign up
   screens/path_screen.dart                learning path: units + winding lesson trail
-  screens/lesson_screen.dart              lesson player: learn + practice steps
+  screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
