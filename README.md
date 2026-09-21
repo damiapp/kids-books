@@ -62,6 +62,49 @@ The APK lands in `build/app/outputs/flutter-apk/`.
 
 ---
 
+## 1d. Signing, so new APKs install as updates
+
+Flutter's generated project signs release builds with the **debug** key, and
+a fresh CI runner has no debug keystore — so Gradle invents a new random one
+on every run. Each APK then carries a different signing certificate, and
+Android refuses to install over an app signed by a different key ("App not
+installed"). The only way through is uninstall-then-reinstall, losing local
+progress each time.
+
+Fix it once by giving CI a stable keystore. Generate one (keep the `.jks`
+somewhere safe — **lose it and you can never update an installed Peekado**):
+
+```bash
+keytool -genkey -v -keystore peekado-upload.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias peekado
+base64 -w0 peekado-upload.jks > peekado-upload.jks.b64   # macOS: base64 -i …
+```
+
+Then add four **repository secrets** (Settings → Secrets and variables →
+Actions → New repository secret):
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE_B64` | the whole contents of `peekado-upload.jks.b64` |
+| `ANDROID_KEYSTORE_PASSWORD` | the keystore password you chose |
+| `ANDROID_KEY_ALIAS` | `peekado` |
+| `ANDROID_KEY_PASSWORD` | the key password (same as above unless you set one) |
+
+The workflow decodes the keystore, writes `android/key.properties`, and
+patches the generated Gradle file to sign `release` with it — re-done on every
+run, because `flutter create` rewrites those files each time. Without the
+secrets the build still works but logs a warning and stays debug-signed.
+
+Each run prints the signing certificate's SHA-256, so you can confirm it stops
+changing between builds. The keystore never goes in the repo (which is public).
+
+> The **first** build after setting this up still won't install over the
+> current app — its signature differs from the random one already on the
+> phone. Uninstall Peekado once, install that build, and every build after
+> that updates in place.
+
+---
+
 ## 1c. Turning on real sign-in (Firebase Authentication)
 
 The app now opens with a **landing page → a 2-slide "what is this app"
