@@ -36,34 +36,10 @@ class PathScreen extends StatefulWidget {
 }
 
 class _PathScreenState extends State<PathScreen> {
-  final _scrollKey = GlobalKey();
-  late final List<GlobalKey> _unitKeys =
-      List.generate(LessonCatalog.units.length, (_) => GlobalKey());
-
-  /// Which unit the single banner at the top is currently showing.
-  int _activeUnit = 0;
-
   @override
   void initState() {
     super.initState();
     widget.energy.refresh();
-  }
-
-  /// The banner shows whichever unit has scrolled up past the top of the
-  /// list — only one is ever on screen, so they can't stack up.
-  void _updateActiveUnit() {
-    final scrollBox = _scrollKey.currentContext?.findRenderObject();
-    if (scrollBox is! RenderBox || !scrollBox.attached) return;
-    final listTop = scrollBox.localToGlobal(Offset.zero).dy;
-
-    var active = 0;
-    for (var i = 0; i < _unitKeys.length; i++) {
-      // Units far off screen aren't laid out yet, so they just don't vote.
-      final box = _unitKeys[i].currentContext?.findRenderObject();
-      if (box is! RenderBox || !box.attached) continue;
-      if (box.localToGlobal(Offset.zero).dy <= listTop + 8) active = i;
-    }
-    if (active != _activeUnit) setState(() => _activeUnit = active);
   }
 
   /// A unit's trophy lesson: a shuffled mix pulled from every lesson in
@@ -218,12 +194,7 @@ class _PathScreenState extends State<PathScreen> {
 
   /// One unit's stretch of trail: a node per lesson, then the trophy that
   /// plays the unit's review.
-  Widget _unitSection(
-    BuildContext context,
-    LessonUnit unit,
-    int unitIndex,
-    Key sectionKey,
-  ) {
+  Widget _unitSection(BuildContext context, LessonUnit unit) {
     final rows = <Widget>[];
 
     for (var i = 0; i < unit.lessonIds.length; i++) {
@@ -272,11 +243,8 @@ class _PathScreenState extends State<PathScreen> {
       ),
     ));
 
-    // The key rides on this box (not the sliver) so the scroll listener can
-    // measure where the unit sits — slivers aren't RenderBoxes.
     return Padding(
-      key: sectionKey,
-      padding: EdgeInsets.only(top: unitIndex == 0 ? 8 : 28, bottom: 8),
+      padding: const EdgeInsets.only(top: 4, bottom: 20),
       child: Column(children: rows),
     );
   }
@@ -298,8 +266,6 @@ class _PathScreenState extends State<PathScreen> {
                 .where((b) => widget.progress.isCompleted(b.id))
                 .length;
 
-            final activeUnit = LessonCatalog.units[_activeUnit];
-
             return Column(
               children: [
                 _TopBar(
@@ -308,31 +274,32 @@ class _PathScreenState extends State<PathScreen> {
                   completedCount: completedCount,
                   onEnergyTap: () => _openSubscribe(context),
                 ),
-                _UnitBanner(
-                  unit: activeUnit,
-                  doneCount: activeUnit.lessonIds
-                      .where(widget.progress.isCompleted)
-                      .length,
-                ),
                 Expanded(
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (_) {
-                      _updateActiveUnit();
-                      return false;
-                    },
-                    child: SizedBox.expand(
-                      key: _scrollKey,
-                      child: CustomScrollView(
-                        slivers: [
-                          for (var u = 0; u < LessonCatalog.units.length; u++)
-                            SliverToBoxAdapter(
-                              child: _unitSection(context,
-                                  LessonCatalog.units[u], u, _unitKeys[u]),
+                  child: CustomScrollView(
+                    slivers: [
+                      // Each unit is its own group, so its banner sticks to
+                      // the top only while that unit is on screen and the
+                      // next unit's banner pushes it out. Pinned headers
+                      // outside a group would pile up instead.
+                      for (final unit in LessonCatalog.units)
+                        SliverMainAxisGroup(
+                          slivers: [
+                            SliverPersistentHeader(
+                              pinned: true,
+                              delegate: _UnitHeaderDelegate(
+                                unit: unit,
+                                doneCount: unit.lessonIds
+                                    .where(widget.progress.isCompleted)
+                                    .length,
+                              ),
                             ),
-                          const SliverToBoxAdapter(child: SizedBox(height: 48)),
-                        ],
-                      ),
-                    ),
+                            SliverToBoxAdapter(
+                              child: _unitSection(context, unit),
+                            ),
+                          ],
+                        ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                    ],
                   ),
                 ),
               ],
@@ -448,8 +415,37 @@ class _Stat extends StatelessWidget {
   }
 }
 
-/// The one banner at the top of the path. Its contents swap to whichever
-/// unit you've scrolled into, so banners never stack up.
+/// Sticks a unit's banner to the top of the list for as long as that unit
+/// is on screen; the next unit's banner then pushes it out (see the
+/// SliverMainAxisGroup in build).
+class _UnitHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _UnitHeaderDelegate({required this.unit, required this.doneCount});
+
+  final LessonUnit unit;
+  final int doneCount;
+
+  static const _height = 88.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // Opaque, so trail nodes scroll behind the banner rather than through it.
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: _UnitBanner(unit: unit, doneCount: doneCount),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _UnitHeaderDelegate old) =>
+      old.unit != unit || old.doneCount != doneCount;
+}
+
 class _UnitBanner extends StatelessWidget {
   const _UnitBanner({required this.unit, required this.doneCount});
 
@@ -459,9 +455,8 @@ class _UnitBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      child: Container(
         decoration: BoxDecoration(
           color: unit.color,
           borderRadius: BorderRadius.circular(18),

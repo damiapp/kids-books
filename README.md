@@ -130,8 +130,10 @@ gates progression: a lesson unlocks once the one before it is finished,
 so the whole path is one flat sequence split into units. Add a lesson to
 `lessons` and drop its id into a unit's `lessonIds` to extend it.
 
-Only one unit banner shows at a time, at the top of the screen; it swaps
-to whichever unit you've scrolled into (`_updateActiveUnit`). The trophy
+Each unit's banner lives on the map and sticks to the top while that
+unit is on screen, until the next unit's banner pushes it out. That's
+what `SliverMainAxisGroup` buys: pinned headers sitting directly in the
+scroll view would pile up on each other instead. The trophy
 plays that unit's **review** — a six-word mix built at runtime by
 `_reviewLesson`, round-robined across every lesson in the unit so all of
 them are represented. It's tracked as `review_<unit id>`, seeded by the
