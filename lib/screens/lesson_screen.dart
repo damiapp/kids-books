@@ -248,6 +248,7 @@ class _LearnView extends StatelessWidget {
           Expanded(
             child: Container(
               width: double.infinity,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: word.color,
                 borderRadius: BorderRadius.circular(32),
@@ -258,7 +259,19 @@ class _LearnView extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(word.emoji, style: const TextStyle(fontSize: 120)),
+                        // Same reason as the choice cards: a five-emoji
+                        // word has to shrink to fit, not wrap.
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              word.emoji,
+                              softWrap: false,
+                              style: const TextStyle(fontSize: 120),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           word.word,
@@ -470,6 +483,7 @@ class _ChoiceCard extends StatelessWidget {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(24),
@@ -480,24 +494,37 @@ class _ChoiceCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(24),
           onTap: onTap,
-          child: Center(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(word.emoji, style: const TextStyle(fontSize: 56)),
-                const SizedBox(height: 8),
-                Text(word.word,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                // Counting words are several emoji wide ("⭐⭐⭐⭐"). Scale
+                // them down to a single line instead of letting them wrap
+                // and shove the label out of the card.
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      word.emoji,
+                      softWrap: false,
+                      style: const TextStyle(fontSize: 56),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  word.word,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
                 if (isCorrect)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50)),
-                  ),
+                  const Icon(Icons.check_circle_rounded,
+                      size: 22, color: Color(0xFF4CAF50)),
                 if (isWrong)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Icon(Icons.cancel_rounded, color: Color(0xFFE0637A)),
-                  ),
+                  const Icon(Icons.cancel_rounded,
+                      size: 22, color: Color(0xFFE0637A)),
               ],
             ),
           ),
