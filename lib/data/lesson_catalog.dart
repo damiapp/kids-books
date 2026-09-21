@@ -5,11 +5,15 @@ import '../models/lesson.dart';
 /// in the order they unlock.
 class LessonUnit {
   const LessonUnit({
+    required this.id,
     required this.section,
     required this.title,
     required this.color,
     required this.lessonIds,
   });
+
+  /// Stable id — the unit's review lesson is tracked as `review_<id>`.
+  final String id;
 
   /// Small label above the title, e.g. "SECTION 1, UNIT 1".
   final String section;
@@ -43,30 +47,35 @@ class LessonCatalog {
   /// finished, so order here is what gates progression.
   static const List<LessonUnit> units = [
     LessonUnit(
+      id: 'first_words',
       section: 'SECTION 1, UNIT 1',
       title: 'First words',
       color: Color(0xFF3AA7A0),
       lessonIds: ['colours', 'numbers', 'shapes'],
     ),
     LessonUnit(
+      id: 'animal_friends',
       section: 'SECTION 1, UNIT 2',
       title: 'Animal friends',
       color: Color(0xFFE08D3C),
       lessonIds: ['animals', 'farm', 'garden'],
     ),
     LessonUnit(
+      id: 'every_day',
       section: 'SECTION 1, UNIT 3',
       title: 'Every day',
       color: Color(0xFF7C6BB5),
       lessonIds: ['food', 'body', 'clothes'],
     ),
     LessonUnit(
+      id: 'my_world',
       section: 'SECTION 1, UNIT 4',
       title: 'My world',
       color: Color(0xFF3D8BC4),
       lessonIds: ['family', 'weather', 'vehicles'],
     ),
     LessonUnit(
+      id: 'how_i_feel',
       section: 'SECTION 1, UNIT 5',
       title: 'How I feel',
       color: Color(0xFFD45D79),

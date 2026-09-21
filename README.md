@@ -124,11 +124,18 @@ lib/
   main.dart                               swap Demo <-> RevenueCat here
 ```
 
-**The path:** `LessonCatalog.units` defines the trail — each unit is a
-banner plus an ordered list of lesson ids, closed out by a trophy node.
-Order is what gates progression: a lesson unlocks once the one before it
-is finished, so the whole path is one flat sequence split into units. Add
-a lesson to `lessons` and drop its id into a unit's `lessonIds` to extend it.
+**The path:** `LessonCatalog.units` defines the trail — each unit is an
+ordered list of lesson ids, closed out by a trophy node. Order is what
+gates progression: a lesson unlocks once the one before it is finished,
+so the whole path is one flat sequence split into units. Add a lesson to
+`lessons` and drop its id into a unit's `lessonIds` to extend it.
+
+Only one unit banner shows at a time, at the top of the screen; it swaps
+to whichever unit you've scrolled into (`_updateActiveUnit`). The trophy
+plays that unit's **review** — a six-word mix built at runtime by
+`_reviewLesson`, round-robined across every lesson in the unit so all of
+them are represented. It's tracked as `review_<unit id>`, seeded by the
+unit id so a half-finished review resumes on the right word.
 
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically

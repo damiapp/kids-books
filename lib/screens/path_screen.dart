@@ -36,10 +36,69 @@ class PathScreen extends StatefulWidget {
 }
 
 class _PathScreenState extends State<PathScreen> {
+  final _scrollKey = GlobalKey();
+  late final List<GlobalKey> _unitKeys =
+      List.generate(LessonCatalog.units.length, (_) => GlobalKey());
+
+  /// Which unit the single banner at the top is currently showing.
+  int _activeUnit = 0;
+
   @override
   void initState() {
     super.initState();
     widget.energy.refresh();
+  }
+
+  /// The banner shows whichever unit has scrolled up past the top of the
+  /// list — only one is ever on screen, so they can't stack up.
+  void _updateActiveUnit() {
+    final scrollBox = _scrollKey.currentContext?.findRenderObject();
+    if (scrollBox is! RenderBox || !scrollBox.attached) return;
+    final listTop = scrollBox.localToGlobal(Offset.zero).dy;
+
+    var active = 0;
+    for (var i = 0; i < _unitKeys.length; i++) {
+      // Units far off screen aren't laid out yet, so they just don't vote.
+      final box = _unitKeys[i].currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.attached) continue;
+      if (box.localToGlobal(Offset.zero).dy <= listTop + 8) active = i;
+    }
+    if (active != _activeUnit) setState(() => _activeUnit = active);
+  }
+
+  /// A unit's trophy lesson: a shuffled mix pulled from every lesson in
+  /// that unit, so it tests the whole section rather than one topic. The
+  /// seed is the unit id, so the order is stable — a half-finished review
+  /// resumes on the word it left off on.
+  Lesson _reviewLesson(LessonUnit unit) {
+    final perLesson = [
+      for (final id in unit.lessonIds)
+        LessonCatalog.byId(id).words.toList()
+          ..shuffle(Random(unit.id.hashCode ^ id.hashCode)),
+    ];
+
+    // Round-robin so every lesson in the unit is represented.
+    final picked = <LessonWord>[];
+    for (var round = 0; picked.length < 6; round++) {
+      var addedAny = false;
+      for (final words in perLesson) {
+        if (round < words.length && picked.length < 6) {
+          picked.add(words[round]);
+          addedAny = true;
+        }
+      }
+      if (!addedAny) break;
+    }
+    picked.shuffle(Random(unit.id.hashCode));
+
+    return Lesson(
+      id: 'review_${unit.id}',
+      title: '${unit.title} review',
+      subtitle: 'A mix of everything in this unit',
+      coverEmoji: '🏆',
+      coverColor: unit.color,
+      words: picked,
+    );
   }
 
   /// Every lesson, in unlock order.
@@ -88,12 +147,12 @@ class _PathScreenState extends State<PathScreen> {
     ));
   }
 
-  void _showLocked(BuildContext context) {
+  void _showLocked(BuildContext context, String message) {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(const SnackBar(
-        content: Text('Finish the lesson before this one first.'),
-        duration: Duration(seconds: 2),
+      ..showSnackBar(SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
       ));
   }
 
@@ -157,6 +216,71 @@ class _PathScreenState extends State<PathScreen> {
     );
   }
 
+  /// One unit's stretch of trail: a node per lesson, then the trophy that
+  /// plays the unit's review.
+  Widget _unitSection(
+    BuildContext context,
+    LessonUnit unit,
+    int unitIndex,
+    Key sectionKey,
+  ) {
+    final rows = <Widget>[];
+
+    for (var i = 0; i < unit.lessonIds.length; i++) {
+      final lesson = LessonCatalog.byId(unit.lessonIds[i]);
+      final state = _stateOf(lesson);
+      rows.add(_PathRow(
+        index: i,
+        label: lesson.title,
+        child: _PathNode(
+          state: state,
+          icon: state == _NodeState.completed
+              ? Icons.star_rounded
+              : state == _NodeState.current
+                  ? Icons.play_arrow_rounded
+                  : Icons.lock_rounded,
+          emoji: state == _NodeState.locked ? null : lesson.coverEmoji,
+          progress: state == _NodeState.current ? _progressOf(lesson) : null,
+          showStart: state == _NodeState.current,
+          onTap: state == _NodeState.locked
+              ? () => _showLocked(
+                  context, 'Finish the lesson before this one first.')
+              : () => _openLesson(context, lesson),
+        ),
+      ));
+    }
+
+    final unitDone = unit.lessonIds.every(widget.progress.isCompleted);
+    final review = _reviewLesson(unit);
+    final reviewDone = widget.progress.isCompleted(review.id);
+
+    rows.add(_PathRow(
+      index: unit.lessonIds.length,
+      label: 'Unit review',
+      child: _PathNode(
+        state: reviewDone
+            ? _NodeState.completed
+            : unitDone
+                ? _NodeState.current
+                : _NodeState.locked,
+        icon: Icons.emoji_events_rounded,
+        progress: unitDone && !reviewDone ? _progressOf(review) : null,
+        onTap: unitDone
+            ? () => _openLesson(context, review)
+            : () => _showLocked(
+                context, 'Finish every lesson in this unit first.'),
+      ),
+    ));
+
+    // The key rides on this box (not the sliver) so the scroll listener can
+    // measure where the unit sits — slivers aren't RenderBoxes.
+    return Padding(
+      key: sectionKey,
+      padding: EdgeInsets.only(top: unitIndex == 0 ? 8 : 28, bottom: 8),
+      child: Column(children: rows),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,6 +298,8 @@ class _PathScreenState extends State<PathScreen> {
                 .where((b) => widget.progress.isCompleted(b.id))
                 .length;
 
+            final activeUnit = LessonCatalog.units[_activeUnit];
+
             return Column(
               children: [
                 _TopBar(
@@ -182,69 +308,31 @@ class _PathScreenState extends State<PathScreen> {
                   completedCount: completedCount,
                   onEnergyTap: () => _openSubscribe(context),
                 ),
+                _UnitBanner(
+                  unit: activeUnit,
+                  doneCount: activeUnit.lessonIds
+                      .where(widget.progress.isCompleted)
+                      .length,
+                ),
                 Expanded(
-                  child: CustomScrollView(
-                    slivers: [
-                      for (final unit in LessonCatalog.units) ...[
-                        SliverPersistentHeader(
-                          pinned: true,
-                          delegate: _UnitHeaderDelegate(
-                            unit: unit,
-                            doneCount: unit.lessonIds
-                                .where(widget.progress.isCompleted)
-                                .length,
-                          ),
-                        ),
-                        SliverList.builder(
-                          // One node per lesson, plus a trophy to close the unit.
-                          itemCount: unit.lessonIds.length + 1,
-                          itemBuilder: (context, i) {
-                            if (i == unit.lessonIds.length) {
-                              final unitDone = unit.lessonIds
-                                  .every(widget.progress.isCompleted);
-                              return _PathRow(
-                                index: i,
-                                child: _PathNode(
-                                  state: unitDone
-                                      ? _NodeState.completed
-                                      : _NodeState.locked,
-                                  icon: Icons.emoji_events_rounded,
-                                  onTap: unitDone
-                                      ? null
-                                      : () => _showLocked(context),
-                                ),
-                              );
-                            }
-
-                            final lesson = LessonCatalog.byId(unit.lessonIds[i]);
-                            final state = _stateOf(lesson);
-                            return _PathRow(
-                              index: i,
-                              label: lesson.title,
-                              child: _PathNode(
-                                state: state,
-                                icon: state == _NodeState.completed
-                                    ? Icons.star_rounded
-                                    : state == _NodeState.current
-                                        ? Icons.play_arrow_rounded
-                                        : Icons.lock_rounded,
-                                emoji: state == _NodeState.locked
-                                    ? null
-                                    : lesson.coverEmoji,
-                                progress: state == _NodeState.current
-                                    ? _progressOf(lesson)
-                                    : null,
-                                showStart: state == _NodeState.current,
-                                onTap: state == _NodeState.locked
-                                    ? () => _showLocked(context)
-                                    : () => _openLesson(context, lesson),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                      const SliverToBoxAdapter(child: SizedBox(height: 32)),
-                    ],
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (_) {
+                      _updateActiveUnit();
+                      return false;
+                    },
+                    child: SizedBox.expand(
+                      key: _scrollKey,
+                      child: CustomScrollView(
+                        slivers: [
+                          for (var u = 0; u < LessonCatalog.units.length; u++)
+                            SliverToBoxAdapter(
+                              child: _unitSection(context,
+                                  LessonCatalog.units[u], u, _unitKeys[u]),
+                            ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 48)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -360,75 +448,67 @@ class _Stat extends StatelessWidget {
   }
 }
 
-class _UnitHeaderDelegate extends SliverPersistentHeaderDelegate {
-  _UnitHeaderDelegate({required this.unit, required this.doneCount});
+/// The one banner at the top of the path. Its contents swap to whichever
+/// unit you've scrolled into, so banners never stack up.
+class _UnitBanner extends StatelessWidget {
+  const _UnitBanner({required this.unit, required this.doneCount});
 
   final LessonUnit unit;
   final int doneCount;
 
   @override
-  double get minExtent => 88;
-
-  @override
-  double get maxExtent => 88;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Material(
-        color: unit.color,
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      unit.section,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white70,
-                        letterSpacing: 0.8,
-                      ),
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        decoration: BoxDecoration(
+          color: unit.color,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    unit.section,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white70,
+                      letterSpacing: 0.8,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      unit.title,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    unit.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Text(
-                '$doneCount/${unit.lessonIds.length}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                ),
+            ),
+            Text(
+              '$doneCount/${unit.lessonIds.length}',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-
-  @override
-  bool shouldRebuild(covariant _UnitHeaderDelegate old) =>
-      old.unit != unit || old.doneCount != doneCount;
 }
 
 /// Places a node along the winding trail, with its title underneath.
