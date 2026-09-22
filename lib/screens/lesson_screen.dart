@@ -34,6 +34,43 @@ List<_Step> _buildSteps(Lesson lesson) {
   return steps;
 }
 
+/// Paging that only ever goes forward. Swiping back would put a kid on
+/// a question they've already answered — and, since the page they land
+/// on is saved as their place in the lesson, drag their progress
+/// backwards with them.
+class _ForwardOnlyPageScrollPhysics extends PageScrollPhysics {
+  const _ForwardOnlyPageScrollPhysics({
+    super.parent,
+    required this.currentPage,
+  });
+
+  /// The furthest back they're allowed: the page they're on. It's read
+  /// live rather than passed as a number, because a ScrollPosition keeps
+  /// the physics object it was built with — Scrollable only replaces the
+  /// position when the physics *type* changes, so a page index captured
+  /// here would freeze on whichever step armed this first.
+  final ValueGetter<int> currentPage;
+
+  @override
+  _ForwardOnlyPageScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      _ForwardOnlyPageScrollPhysics(
+        parent: buildParent(ancestor),
+        currentPage: currentPage,
+      );
+
+  @override
+  double applyBoundaryConditions(ScrollMetrics position, double value) {
+    // A page is one viewport wide, so this is where the current one
+    // starts. Reporting anything before it as overscroll is exactly how
+    // the list already behaves at its first page — the drag is absorbed
+    // and it springs back. Forward is left to the parent, which still
+    // stops at the end of the lesson.
+    final floor = currentPage() * position.viewportDimension;
+    if (value < floor) return value - floor;
+    return super.applyBoundaryConditions(position, value);
+  }
+}
+
 /// Plays one lesson: a "learn" step (see + hear the word) followed by a
 /// "practice" step (tap the match) for each word — a teach-then-test
 /// loop. Energy is spent once, before this screen opens (see PathScreen),
@@ -178,10 +215,12 @@ class _LessonScreenState extends State<LessonScreen> {
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,
-                    // Learn steps swipe freely; an unanswered practice step
-                    // is a wall until the right picture is tapped.
+                    // An unanswered practice step is a wall until the
+                    // right picture is tapped; everything else moves
+                    // forward only, never back.
                     physics: _canSwipe
-                        ? const PageScrollPhysics()
+                        ? _ForwardOnlyPageScrollPhysics(
+                            currentPage: () => _index)
                         : const NeverScrollableScrollPhysics(),
                     onPageChanged: _onPageChanged,
                     itemCount: _steps.length,
@@ -307,8 +346,9 @@ class _LearnView extends StatelessWidget {
   }
 }
 
-/// Nudges the swipe, since a three-year-old won't guess it. Drifts right
-/// and back so it reads as "keep going this way".
+/// Nudges the swipe, since a three-year-old won't guess it. Advancing a
+/// PageView means dragging the page leftwards, so the arrow points that
+/// way and the whole hint drifts left and back to trace the gesture.
 class _SwipeHint extends StatefulWidget {
   const _SwipeHint();
 
@@ -340,22 +380,22 @@ class _SwipeHintState extends State<_SwipeHint>
     return AnimatedBuilder(
       animation: _drift,
       builder: (context, child) => Transform.translate(
-        offset: Offset(_drift.value * 12, 0),
+        offset: Offset(_drift.value * -12, 0),
         child: child,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Icon(Icons.arrow_back_rounded, size: 20, color: color),
+          const SizedBox(width: 6),
           Text(
-            'Swipe to keep going',
+            'Swipe left to keep going',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: color,
             ),
           ),
-          const SizedBox(width: 6),
-          Icon(Icons.arrow_forward_rounded, size: 20, color: color),
         ],
       ),
     );

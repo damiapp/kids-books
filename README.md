@@ -4,8 +4,9 @@
 A Flutter app of short listen-then-practice lessons for early learners. Each
 lesson teaches a word (picture + sound), then quizzes it back with a
 tap-the-match exercise — kids see it, hear it, then try it themselves.
-You swipe between steps; a practice step won't let you swipe past until
-the right picture is tapped.
+You swipe left between steps, forward only — a practice step won't let
+you past until the right picture is tapped, and nothing lets you swipe
+back to a question you've already answered.
 
 Access is **energy**, not per-item purchase: everyone gets a capped pool of
 energy that's spent to start a lesson and slowly refills over time; **All
