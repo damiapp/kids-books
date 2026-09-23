@@ -208,3 +208,59 @@ Pages use emoji as stand-in art. For real illustrations, add an `imageUrl`
 (R2-hosted) or bundled `imageAsset` to `LessonWord` and render it in
 `lesson_screen.dart` instead of the emoji `Text` — both the learn step and
 the practice-step choice cards use it.
+
+---
+
+## 6. Revenue beyond the subscription (plan, nothing built yet)
+
+All Access is the only thing sold today. This is the shortlist for what
+comes next, and what each would cost in this codebase.
+
+**The principle:** the user is three, so there is no monetising the free
+*user* — there's monetising the parent, by removing a limit they feel or
+answering a question they have. That's the test each idea below has to
+pass.
+
+**Ruled out, on purpose:**
+
+- **Ads, including rewarded video.** Built once (0950b23) and reverted.
+  An ad is a "watch this instead" button inside a learning app: the
+  revenue comes from a third party and the distraction lands on the
+  child. Google Play's Families policy would allow it with certified
+  SDKs, non-personalised requests and no advertising ID — the objection
+  isn't compliance, it's that it works against the thing the app is for.
+- **Paying to refill energy.** Ad-free, but it monetises the same
+  interruption ads did, and teaches a four-year-old that being stopped
+  is solved by money.
+
+**1. Lifetime unlock — one-time purchase.** Plenty of parents won't take
+a subscription on a kids' app at any price, and today they don't convert
+at all. Attach a second, non-consumable product to the *same*
+`all_access` entitlement in RevenueCat (§3): `EntitlementService` already
+hides which product granted access, so nothing outside `PaywallScreen`
+changes. Usually priced at 5–8x the monthly. Smallest change here, and
+the one that opens a segment that currently spends nothing.
+
+**2. Per-unit packs.** The catalog is already unit-shaped
+(`LessonCatalog.units`), so "first unit free, buy the rest or subscribe"
+is an entitlement per unit, a price on locked path nodes, and a check in
+`PathScreen._openLesson` next to the energy one. Gives free users a
+purchase that isn't a commitment. The cost is aesthetic and real: the
+learning path starts reading as a shop.
+
+**3. Sell the parent something new.** A parent view — words learned,
+which ones keep coming back wrong, time spent — plus the multiple child
+profiles from the original roadmap. `ProgressService` already holds the
+raw material; it would need per-profile keys and a screen. This is the
+only option that *adds* something rather than gating it, and it's what
+makes All Access worth renewing rather than merely unlocking.
+
+**4. Preschools and daycares.** One licence covering a room of children,
+sold to an adult with a budget — far higher ARPU, no consumer friction.
+Needs real accounts, an admin view and a sales motion, so it's a later
+move, not a next one.
+
+**Suggested order:** 1, then 3. The first captures buyers who are
+already interested and currently bounce; the second gives the
+subscription a reason to renew past the point where the child has
+finished the catalogue.
