@@ -69,24 +69,37 @@ The app opens with a **landing page → a 2-slide "what is this app"
 explainer → an email/password sign-in screen**, backed by **Firebase
 Authentication**.
 
-The project is **`peekadoo-6529c`**, on the free **Spark** plan.
-`lib/firebase_options.dart` already carries its project-level values
-(`projectId`, `messagingSenderId`, `storageBucket`). **Two per-app
-values are still missing**, and sign-in fails with "API key not valid"
-until they're filled in:
+The project is **`peekadoo-6529c`**, on the free **Spark** plan, and
+`lib/firebase_options.dart` now carries its real config. Check
+**Build → Authentication → Sign-in method** has **Email/Password**
+enabled (leave "Email link (passwordless)" off — nothing here uses it);
+if it isn't on, sign-in reports "Email sign-in isn't switched on for
+this app yet."
 
-1. **Project settings → General → Your apps** → register an **Android**
-   app with package name exactly `app.peekado` (it has to match the
-   workflow's `--org app --project-name peekado`). Skip the
-   `google-services.json` download and the Gradle plugin steps — this app
-   configures Firebase in Dart instead.
-2. Copy **Web API key** (Project settings → General) into `apiKey`, and
-   the registered app's **App ID** (`1:598826488581:android:…`) into
-   `appId`.
-3. **Build → Authentication → Sign-in method** → make sure
-   **Email/Password** is enabled (and leave "Email link (passwordless)"
-   off — nothing here uses it). If it isn't on, sign-in reports "Email
-   sign-in isn't switched on for this app yet."
+**Known mismatch — package name.** The Firebase project registers two
+Android apps, `com.peekadoo` and `com.peekadoo.peekadoo`. CI builds
+this app as **`app.peekado`** (the workflow's `--org app --project-name
+peekado`), so neither registration matches what installs on a phone.
+Email/password still works, because Firebase Auth validates the **API
+key**, not the app id. What breaks later is anything that binds an app
+to its package: **App Check / Play Integrity**, and per-app **Android
+restrictions on the API key** — the moment that key is restricted to
+`com.peekadoo` + a SHA-1, every request from this build is rejected.
+
+Two ways to close it, and the choice is permanent once the app is
+published, because a Play Store package name can never be changed:
+
+- **Register `app.peekado`** as a third Android app in the project and
+  put its app id in `firebase_options.dart`. Nothing about the app
+  changes; the installed build keeps its identity.
+- **Rebuild as `com.peekadoo`** by changing the workflow to `--org com
+  --project-name peekadoo`. That matches what's registered, but bakes
+  the "Peekadoo" spelling into the app's permanent identity, and the
+  package change makes it a *different app* to Android — a fresh
+  install, not an update.
+
+The spare `com.peekadoo.peekadoo` registration can be deleted either
+way.
 
 `storageBucket` is `peekadoo-6529c.firebasestorage.app`, **not**
 `.appspot.com` — projects created since late 2024 use the newer domain,
