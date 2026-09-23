@@ -123,14 +123,22 @@ to install an APK over one with a different signature — which is why
 updating Peekadoo meant uninstalling it first and losing all local
 progress.
 
-The workflow now restores one stable key to `~/.android/debug.keystore`
-before building. That's deliberately the debug path rather than a
-`key.properties` + release `signingConfig` block: the template already
-points release builds there, so there's no Gradle file to patch and
-nothing to keep in step with future Flutter templates. The key itself
-is an ordinary 2048-bit RSA key valid to 2054, and its certificate is
-`CN=Peekadoo` — *not* the well-known `CN=Android Debug`, which Google
-Play rejects on upload.
+The workflow now gives the generated project a real **release**
+signing config (`.github/scripts/patch_signing.py`), pointed at a
+stable key restored from a repo secret. The patch runs on every build,
+because `flutter create` rewrites `android/` on every build.
+
+The first attempt at this dropped the key at `~/.android/debug.keystore`
+and let the template's existing debug config pick it up — no Gradle
+surgery. It didn't work: the toolchain resolves that path through
+`ANDROID_PREFS_ROOT`/`ANDROID_SDK_HOME` rather than `HOME` on the
+runner, so it never saw the file and generated its own. The APK looked
+fine and was signed by the stock debug key. Hence the explicit config,
+which depends on nothing but an env var.
+
+The key is an ordinary 2048-bit RSA key valid to 2054, and its
+certificate is `CN=Peekadoo` — *not* the well-known `CN=Android
+Debug`, which Google Play rejects on upload.
 
 **Setup, once:** add a repository secret named
 **`ANDROID_KEYSTORE_BASE64`** (Settings → Secrets and variables →
@@ -138,18 +146,20 @@ Actions → New repository secret) containing the base64 of the keystore
 file. Without it the build still succeeds, prints a warning, and
 produces a throwaway-signed APK exactly as before.
 
-The store password, key password and alias are the fixed Android debug
-values (`android`, `android`, `androiddebugkey`) — they have to be, for
-the debug config to open the file. That's not a weakness here: those
-values are public knowledge, so the *file* is the entire secret. Keep a
-copy somewhere safe. If it's lost, new builds can no longer update any
-copy already installed.
+The store password, key password and alias are the stock Android debug
+values (`android`, `android`, `androiddebugkey`), kept from when this
+went through the debug config. They're in the workflow in plain sight,
+which is fine: those values are public knowledge, so the keystore
+*file* is the entire secret. Keep a copy somewhere safe — if it's lost,
+new builds can no longer update any copy already installed.
 
-Every signed build logs its signing certificate (`Show the signing
-certificate`). If Flutter ever stops pointing release builds at the
-debug config, that fingerprint changes and the log says so, instead of
-the problem resurfacing weeks later as an install that won't go
-through.
+Every build **checks** its signing certificate and fails if a keystore
+was supplied but the APK came out signed by the debug key. That's not
+belt-and-braces: it's exactly the failure above, which produced a
+green build and a perfectly valid APK that simply couldn't be
+installed as an update. The patch script is equally loud — if a future
+Flutter template stops signing release with the debug config, it stops
+the build rather than guessing.
 
 **The switch-over still costs one uninstall.** The Peekadoo currently
 on your phone is signed with a throwaway key, so the first signed build
