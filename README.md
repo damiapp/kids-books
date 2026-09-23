@@ -114,6 +114,55 @@ flow, and never touch your Firebase project.
 
 ---
 
+## 1d. Signing, so a new build installs as an update
+
+Flutter signs release builds with `signingConfigs.debug`, and a CI
+runner has no debug keystore until Gradle generates a random one. So
+every build used to be signed by a different key, and Android refuses
+to install an APK over one with a different signature — which is why
+updating Peekadoo meant uninstalling it first and losing all local
+progress.
+
+The workflow now restores one stable key to `~/.android/debug.keystore`
+before building. That's deliberately the debug path rather than a
+`key.properties` + release `signingConfig` block: the template already
+points release builds there, so there's no Gradle file to patch and
+nothing to keep in step with future Flutter templates. The key itself
+is an ordinary 2048-bit RSA key valid to 2054, and its certificate is
+`CN=Peekadoo` — *not* the well-known `CN=Android Debug`, which Google
+Play rejects on upload.
+
+**Setup, once:** add a repository secret named
+**`ANDROID_KEYSTORE_BASE64`** (Settings → Secrets and variables →
+Actions → New repository secret) containing the base64 of the keystore
+file. Without it the build still succeeds, prints a warning, and
+produces a throwaway-signed APK exactly as before.
+
+The store password, key password and alias are the fixed Android debug
+values (`android`, `android`, `androiddebugkey`) — they have to be, for
+the debug config to open the file. That's not a weakness here: those
+values are public knowledge, so the *file* is the entire secret. Keep a
+copy somewhere safe. If it's lost, new builds can no longer update any
+copy already installed.
+
+Every signed build logs its signing certificate (`Show the signing
+certificate`). If Flutter ever stops pointing release builds at the
+debug config, that fingerprint changes and the log says so, instead of
+the problem resurfacing weeks later as an install that won't go
+through.
+
+**The switch-over still costs one uninstall.** The Peekadoo currently
+on your phone is signed with a throwaway key, so the first signed build
+can't install over it. Remove it once; after that, every build installs
+as a normal update and keeps its progress.
+
+To move to the conventional setup later (a real `release` signing
+config reading `key.properties`), the same keystore works — it just
+needs the alias and passwords supplied explicitly instead of inherited
+from the debug defaults.
+
+---
+
 ## 2. What's inside
 
 ```

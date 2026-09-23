@@ -8,6 +8,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A step-level `if` can't read the `secrets` context, so the key is
+    # lifted to a job-level env var that steps are allowed to test.
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +35,40 @@ jobs:
 
       - run: flutter pub get
 
+      # Flutter's template signs release builds with signingConfigs.debug,
+      # and a runner generates a fresh random debug keystore on every run —
+      # which is why every APK used to carry a different signature and
+      # Android refused to install one over another. Dropping a stable key
+      # in at that path fixes it with no Gradle surgery to keep in step
+      # with the template. See README §1d.
+      - name: Restore the signing key
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          mkdir -p ~/.android
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > ~/.android/debug.keystore
+          echo "Signing key restored."
+
+      - name: Warn that this build won't install as an update
+        if: env.ANDROID_KEYSTORE_BASE64 == ''
+        run: |
+          echo "::warning::ANDROID_KEYSTORE_BASE64 is not set, so this APK gets a throwaway signature and will not install over an existing Peekadoo. See README section 1d."
+
       - run: flutter build apk --release
+
+      # Prints who signed it. If Flutter ever stops pointing release builds
+      # at the debug config, the fingerprint here changes and the cause is
+      # visible in the log rather than showing up as a failed install weeks
+      # later.
+      - name: Show the signing certificate
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1)
+          if [ -n "$apksigner" ]; then
+            "$apksigner" verify --print-certs \
+              build/app/outputs/flutter-apk/app-release.apk \
+              | grep -Ei 'certificate DN|SHA-256 digest' || true
+          else
+            echo "apksigner not found on this runner; skipping the check."
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
