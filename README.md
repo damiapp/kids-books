@@ -111,10 +111,11 @@ lib/
   models/lesson.dart                      Lesson (title, cover, words) + LessonWord
   data/lesson_catalog.dart                the 14 lessons + the path's units
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
+  data/achievements.dart                  badge list + the stats they're judged on
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
   services/energy_service.dart            energy pool: spend, regen over time
-  services/progress_service.dart          per-lesson step + completion
+  services/progress_service.dart          steps, completion, streak, daily goal, missed words
   services/narration_service.dart         read-aloud / practice-prompt TTS
   services/auth_service.dart              Firebase email/password sign-in
   screens/landing_screen.dart             first screen: app name + tagline
@@ -122,7 +123,8 @@ lib/
   screens/login_screen.dart               email/password sign in & sign up
   screens/path_screen.dart                learning path: units + winding lesson trail
   screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
-  screens/profile_screen.dart             progress: units, words learned, what's next
+  screens/profile_screen.dart             progress, daily goal, tricky words, achievements
+  screens/word_bank_screen.dart           every word learned, tap to hear again
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
@@ -148,11 +150,42 @@ unit id so a half-finished review resumes on the right word, and it
 counts toward the banner's `n/total` alongside the unit's lessons.
 
 **Progress:** `ProfileScreen` (drawer → Progress, or the ⭐ in the top
-bar) is a read-only view derived from the catalog and `ProgressService`
-— steps finished out of the whole path, distinct words met, what's up
-next in the current unit, and a bar per unit. Nothing is stored for it.
+bar) is derived from the catalog and `ProgressService` — steps finished
+out of the whole path, distinct words met, today's goal and streak,
+what's up next, a bar per unit, tricky words, and the achievement grid.
 Words are counted by the word itself, not per lesson, since a unit
 review re-uses words its unit already taught.
+
+**Streaks and the daily goal** live in `ProgressService` rather than a
+service of their own, because they're written at the same moment
+completion is — the end of a lesson. A day counts once a lesson is
+finished, so the streak reads 0 on a fresh day and only ever goes up by
+doing something; yesterday continues a streak, anything older starts a
+new one. Replays count toward the goal (`dailyGoal`, 2) but not toward
+lessons completed — the point of a goal is showing up. It's deliberately
+gentle: a missed day resets quietly, with no nagging, since streak
+pressure aimed at a three-year-old lands on whoever holds the phone.
+
+**Missed words** are what make practice mean anything. A wrong tap calls
+`recordMiss`, and two things spend that: a unit's trophy review fills
+its six slots with the unit's missed words first (round-robin only fills
+what's left), and the **Tricky words** drill on the profile screen plays
+the worst offenders from anywhere in the catalog. Answering right in
+that drill calls `forgiveMiss`, so the list empties as words are learned
+— inside a normal lesson it doesn't, because there the right answer is
+the only way past the question, and forgiving it would erase the miss
+just recorded. The drill costs no energy: charging to practise the hard
+words would price the most useful thing in the app.
+
+**Achievements** (`data/achievements.dart`) are pure functions of an
+`AchievementStats` record, computed on the fly. Nothing about them is
+stored, so there's no earned-badge state to drift or migrate, and a
+locked badge shows what it takes rather than a mystery.
+
+**The word bank** is every word from finished lessons, tappable to hear
+again through the same TTS the lessons use. It's the one screen a
+preschooler can use unaided — no reading, nothing to get wrong, no way
+to lose progress.
 
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically

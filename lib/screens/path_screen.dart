@@ -12,6 +12,7 @@ import 'landing_screen.dart';
 import 'lesson_screen.dart';
 import 'paywall_screen.dart';
 import 'profile_screen.dart';
+import 'word_bank_screen.dart';
 
 enum _NodeState { completed, current, locked }
 
@@ -43,8 +44,11 @@ class _PathScreenState extends State<PathScreen> {
     widget.energy.refresh();
   }
 
-  /// One review per unit, built once — they're the same every time, and
-  /// _stateOf walks this list for every node on screen.
+  /// One review per unit, built once — _stateOf walks this list for
+  /// every node on screen. Building once also pins each review's word
+  /// list for as long as this screen lives, so a review interrupted and
+  /// resumed comes back to the same six words even though answering
+  /// changes what counts as tricky.
   late final Map<String, Lesson> _reviews = {
     for (final unit in LessonCatalog.units) unit.id: _buildReview(unit),
   };
@@ -60,13 +64,31 @@ class _PathScreenState extends State<PathScreen> {
           ..shuffle(Random(unit.id.hashCode ^ id.hashCode)),
     ];
 
-    // Round-robin so every lesson in the unit is represented.
     final picked = <LessonWord>[];
+
+    // Words from this unit they've answered wrong go in first, worst
+    // first. Six slots is the whole review, so spending them on words
+    // already known is the one thing it shouldn't do.
+    final byWord = {
+      for (final words in perLesson)
+        for (final word in words) word.word: word,
+    };
+    for (final word in widget.progress.trickiestWords) {
+      if (picked.length >= 6) break;
+      final match = byWord[word];
+      if (match != null) picked.add(match);
+    }
+
+    // Round-robin fills whatever's left, so every lesson in the unit is
+    // still represented.
     for (var round = 0; picked.length < 6; round++) {
       var addedAny = false;
       for (final words in perLesson) {
         if (round < words.length && picked.length < 6) {
-          picked.add(words[round]);
+          final candidate = words[round];
+          if (!picked.any((w) => w.word == candidate.word)) {
+            picked.add(candidate);
+          }
           addedAny = true;
         }
       }
@@ -184,6 +206,12 @@ class _PathScreenState extends State<PathScreen> {
     return minutes <= 1 ? '1 minute' : '$minutes minutes';
   }
 
+  void _openWordBank(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => WordBankScreen(progress: widget.progress),
+    ));
+  }
+
   void _openProfile(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ProfileScreen(
@@ -280,6 +308,7 @@ class _PathScreenState extends State<PathScreen> {
     return Scaffold(
       drawer: _PathDrawer(
         entitlements: widget.entitlements,
+        onWordBankTap: () => _openWordBank(context),
         onProfileTap: () => _openProfile(context),
         onSubscribeTap: () => _openSubscribe(context),
         onSignOutTap: widget.auth == null ? null : () => _signOut(context),
@@ -301,6 +330,7 @@ class _PathScreenState extends State<PathScreen> {
                   completedCount: completedCount,
                   onEnergyTap: () => _openSubscribe(context),
                   onStarTap: () => _openProfile(context),
+                  streak: widget.progress.streak,
                 ),
                 Expanded(
                   child: CustomScrollView(
@@ -349,6 +379,7 @@ class _TopBar extends StatelessWidget {
     required this.completedCount,
     required this.onEnergyTap,
     required this.onStarTap,
+    required this.streak,
   });
 
   final EnergyService energy;
@@ -356,6 +387,7 @@ class _TopBar extends StatelessWidget {
   final int completedCount;
   final VoidCallback onEnergyTap;
   final VoidCallback onStarTap;
+  final int streak;
 
   @override
   Widget build(BuildContext context) {
@@ -371,6 +403,17 @@ class _TopBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
+          // Hidden at zero rather than shown as "0" — a streak should
+          // only ever appear as something earned.
+          if (streak > 0) ...[
+            _Stat(
+              emoji: '🔥',
+              label: '$streak',
+              color: const Color(0xFFE2703A),
+              onTap: onStarTap,
+            ),
+            const SizedBox(width: 14),
+          ],
           _Stat(
             emoji: '⚡',
             label: isPremium ? '∞' : '${energy.current}',
@@ -759,12 +802,14 @@ class _StartBubble extends StatelessWidget {
 class _PathDrawer extends StatelessWidget {
   const _PathDrawer({
     required this.entitlements,
+    required this.onWordBankTap,
     required this.onProfileTap,
     required this.onSubscribeTap,
     this.onSignOutTap,
   });
 
   final EntitlementService entitlements;
+  final VoidCallback onWordBankTap;
   final VoidCallback onProfileTap;
   final VoidCallback onSubscribeTap;
   final VoidCallback? onSignOutTap;
@@ -807,6 +852,14 @@ class _PathDrawer extends StatelessWidget {
               leading: const Icon(Icons.school_rounded),
               title: const Text('Learn'),
               onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.auto_stories_rounded),
+              title: const Text('Word bank'),
+              onTap: () {
+                Navigator.pop(context);
+                onWordBankTap();
+              },
             ),
             ListTile(
               leading: const Icon(Icons.insights_rounded),

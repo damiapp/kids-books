@@ -80,10 +80,17 @@ class LessonScreen extends StatefulWidget {
     super.key,
     required this.progress,
     required this.lesson,
+    this.isPractice = false,
   });
 
   final ProgressService progress;
   final Lesson lesson;
+
+  /// True for the tricky-words drill. A word answered right in a drill
+  /// is forgiven; inside a normal lesson it isn't, because there the
+  /// right answer is the only way past the question — forgiving it would
+  /// erase the miss that was just recorded.
+  final bool isPractice;
 
   @override
   State<LessonScreen> createState() => _LessonScreenState();
@@ -124,7 +131,8 @@ class _LessonScreenState extends State<LessonScreen> {
     }
   }
 
-  void _onAnswered(int stepIndex) {
+  void _onAnswered(int stepIndex, String word) {
+    if (widget.isPractice) widget.progress.forgiveMiss(word);
     setState(() => _answered.add(stepIndex));
     _goToStep(stepIndex + 1);
   }
@@ -240,7 +248,9 @@ class _LessonScreenState extends State<LessonScreen> {
                             isSpeaking: _narration.isSpeaking,
                             onReplay: () =>
                                 _narration.speak(step.target.word),
-                            onCorrect: () => _onAnswered(i),
+                            onCorrect: () => _onAnswered(i, step.target.word),
+                            onWrong: () =>
+                                widget.progress.recordMiss(step.target.word),
                           ),
                       };
                     },
@@ -410,6 +420,7 @@ class _PracticeView extends StatefulWidget {
     required this.isSpeaking,
     required this.onReplay,
     required this.onCorrect,
+    required this.onWrong,
   });
 
   final LessonWord target;
@@ -417,6 +428,7 @@ class _PracticeView extends StatefulWidget {
   final bool isSpeaking;
   final VoidCallback onReplay;
   final VoidCallback onCorrect;
+  final VoidCallback onWrong;
 
   @override
   State<_PracticeView> createState() => _PracticeViewState();
@@ -435,6 +447,7 @@ class _PracticeViewState extends State<_PracticeView> {
       });
       Future.delayed(const Duration(milliseconds: 550), widget.onCorrect);
     } else {
+      widget.onWrong();
       setState(() => _wrongTapped = choice);
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) setState(() => _wrongTapped = null);

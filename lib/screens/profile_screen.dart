@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../data/achievements.dart';
 import '../data/lesson_catalog.dart';
+import '../models/lesson.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/progress_service.dart';
+import 'lesson_screen.dart';
 
 /// Where the learner stands: what they've finished, what they know, what
 /// comes next. Read-only — everything here is derived from the catalog
@@ -67,6 +70,19 @@ class ProfileScreen extends StatelessWidget {
   int get _doneSteps =>
       LessonCatalog.units.fold(0, (sum, unit) => sum + _doneIn(unit));
 
+  /// Opens a drill over the words they keep missing. Free, deliberately:
+  /// charging energy to practise the hard ones would price the most
+  /// useful thing in the app.
+  void _openPractice(BuildContext context, Lesson drill) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LessonScreen(
+        progress: progress,
+        lesson: drill,
+        isPractice: true,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -78,10 +94,7 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, _) {
           final unit = _currentUnit;
           final next = _nextUp;
-          final totalWords = {
-            for (final lesson in LessonCatalog.lessons)
-              for (final word in lesson.words) word.word,
-          }.length;
+          final totalWords = LessonCatalog.allWords.length;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -95,7 +108,14 @@ class ProfileScreen extends StatelessWidget {
                 doneSteps: _doneSteps,
                 totalSteps: _totalSteps,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
+              _TodayCard(
+                lessonsToday: progress.lessonsToday,
+                goal: ProgressService.dailyGoal,
+                streak: progress.streak,
+                longestStreak: progress.longestStreak,
+              ),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -134,6 +154,28 @@ class ProfileScreen extends StatelessWidget {
                   done: _doneIn(u),
                   isCurrent: u.id == unit?.id,
                 ),
+              const SizedBox(height: 10),
+              if (LessonCatalog.practiceLesson(progress.trickiestWords)
+                  case final drill?) ...[
+                const _SectionTitle('Worth another go'),
+                _TrickyWordsCard(
+                  count: drill.words.length,
+                  onTap: () => _openPractice(context, drill),
+                ),
+                const SizedBox(height: 22),
+              ],
+              const _SectionTitle('Achievements'),
+              _AchievementGrid(
+                stats: (
+                  stepsDone: _doneSteps,
+                  wordsLearned: _wordsLearned.length,
+                  totalWords: totalWords,
+                  unitsFinished:
+                      LessonCatalog.units.where(_isFinished).length,
+                  totalUnits: LessonCatalog.units.length,
+                  longestStreak: progress.longestStreak,
+                ),
+              ),
             ],
           );
         },
@@ -451,6 +493,237 @@ class _UnitRow extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w900,
               color: Color(0xFF7A756B),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Today's goal and the streak. Deliberately gentle: a missed day resets
+/// the count quietly and nothing here nags — streak pressure aimed at a
+/// three-year-old really lands on whoever holds the phone.
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({
+    required this.lessonsToday,
+    required this.goal,
+    required this.streak,
+    required this.longestStreak,
+  });
+
+  final int lessonsToday;
+  final int goal;
+  final int streak;
+  final int longestStreak;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final met = lessonsToday >= goal;
+    final capped = lessonsToday > goal ? goal : lessonsToday;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE6E2D9), width: 2),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                met ? '🎉' : '🎯',
+                style: const TextStyle(fontSize: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  met
+                      ? 'Today’s goal done!'
+                      : 'Today: $lessonsToday of $goal lessons',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              if (streak > 0)
+                Text(
+                  '🔥 $streak',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: scheme.primary,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: goal == 0 ? 0 : capped / goal,
+              minHeight: 9,
+              backgroundColor: const Color(0xFFEDEAE1),
+            ),
+          ),
+          if (longestStreak > 0) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                streak >= longestStreak && streak > 0
+                    ? 'Best streak yet — keep it going'
+                    : 'Best streak: $longestStreak days',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF9E9889),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// The words they've got wrong, offered back as a short drill.
+class _TrickyWordsCard extends StatelessWidget {
+  const _TrickyWordsCard({required this.count, required this.onTap});
+
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFDBC2),
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 28)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tricky words',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count to practise · free, no energy',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7A6A5B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementGrid extends StatelessWidget {
+  const _AchievementGrid({required this.stats});
+
+  final AchievementStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 0.85,
+      children: [
+        for (final achievement in kAchievements)
+          _AchievementTile(
+            achievement: achievement,
+            earned: achievement.isEarned(stats),
+          ),
+      ],
+    );
+  }
+}
+
+class _AchievementTile extends StatelessWidget {
+  const _AchievementTile({required this.achievement, required this.earned});
+
+  final Achievement achievement;
+  final bool earned;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: earned ? scheme.primaryContainer : const Color(0xFFF2F0EA),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: earned ? scheme.primary : const Color(0xFFE6E2D9),
+          width: 2,
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // A locked badge keeps its shape but loses its colour, so the
+          // grid reads as a row of goals rather than a row of mysteries.
+          Opacity(
+            opacity: earned ? 1 : 0.35,
+            child: Text(
+              achievement.emoji,
+              style: const TextStyle(fontSize: 28),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            achievement.title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: earned ? const Color(0xFF3B3931) : const Color(0xFF9E9889),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Expanded(
+            child: Text(
+              achievement.detail,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF9E9889),
+              ),
             ),
           ),
         ],

@@ -312,6 +312,45 @@ class LessonCatalog {
   ];
 
   static Lesson byId(String id) => lessons.firstWhere((l) => l.id == id);
+
+  /// Every distinct word in the catalog, in teaching order.
+  static List<LessonWord> get allWords {
+    final seen = <String>{};
+    return [
+      for (final lesson in lessons)
+        for (final word in lesson.words)
+          if (seen.add(word.word)) word,
+    ];
+  }
+
+  /// Looks a word up by its text. Null if it isn't in the catalog any
+  /// more — a saved miss can outlive the lesson that taught it.
+  static LessonWord? wordByText(String text) {
+    for (final word in allWords) {
+      if (word.word == text) return word;
+    }
+    return null;
+  }
+
+  /// A drill over [words] — the same listen-and-tap loop as a lesson,
+  /// built on the fly from whatever is being practised. Null when fewer
+  /// than two of them are still in the catalog, since a tap-the-match
+  /// question needs something to choose between.
+  static Lesson? practiceLesson(List<String> words) {
+    final found = [
+      for (final text in words)
+        if (wordByText(text) case final word?) word,
+    ];
+    if (found.length < 2) return null;
+    return Lesson(
+      id: 'practice_tricky',
+      title: 'Tricky words',
+      subtitle: 'The ones worth another go',
+      coverEmoji: '🎯',
+      coverColor: const Color(0xFFFFDBC2),
+      words: found.take(6).toList(),
+    );
+  }
 }
 
 /// Display-only. The real subscription price is configured in Play Console.
