@@ -122,6 +122,7 @@ lib/
   screens/login_screen.dart               email/password sign in & sign up
   screens/path_screen.dart                learning path: units + winding lesson trail
   screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
+  screens/profile_screen.dart             progress: units, words learned, what's next
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
@@ -145,6 +146,13 @@ plays that unit's **review** — a six-word mix built at runtime by
 them are represented. It's tracked as `review_<unit id>`, seeded by the
 unit id so a half-finished review resumes on the right word, and it
 counts toward the banner's `n/total` alongside the unit's lessons.
+
+**Progress:** `ProfileScreen` (drawer → Progress, or the ⭐ in the top
+bar) is a read-only view derived from the catalog and `ProgressService`
+— steps finished out of the whole path, distinct words met, what's up
+next in the current unit, and a bar per unit. Nothing is stored for it.
+Words are counted by the word itself, not per lesson, since a unit
+review re-uses words its unit already taught.
 
 **How access works:** starting a lesson costs energy (`EnergyService`,
 `costPerLesson`, default 5 of a 25 cap), which regenerates automatically
@@ -264,3 +272,68 @@ move, not a next one.
 already interested and currently bounce; the second gives the
 subscription a reason to renew past the point where the child has
 finished the catalogue.
+
+---
+
+## 7. AI teacher (idea, costed, nothing built)
+
+A tutor the child talks to: it asks for a word, listens, answers back in
+speech, and drills the unit they're on. Sketched here so the shape and
+the price are on record — none of it exists yet.
+
+**Shape.** Flutter -> your server -> the Claude API. The API key can
+never ship inside the APK (anyone can unzip one and read it), so a small
+backend isn't a tax, it's where the feature lives: the safety prompt,
+the per-child spend cap and the transcript log all have to be
+server-side or they're client-editable. The app already has Firebase
+Auth, so the client sends its ID token and the server knows whose budget
+it's spending. The Flutter side is one screen.
+
+**Voice costs nothing extra.** On-device speech-to-text in, `flutter_tts`
+(already a dependency, see `narration_service.dart`) out — so every cent
+is tokens. The catch isn't price, it's accuracy: speech recognition on
+three-to-five-year-olds is far worse than on adults. A tutor built
+around "can you find the red one?" with a tap fallback degrades
+gracefully; one that needs a sentence transcribed won't.
+
+**What it would cost.** Per turn: a ~1,500-token cached system prompt
+(persona + safety rules + the child's current unit), ~600 tokens of
+trimmed history, a ~25-token utterance, a ~70-token spoken reply. A
+session is ~25 turns, about 8–10 minutes. At Anthropic first-party
+prices (checked 2026-06-24 — re-check before pricing anything):
+
+| Model | per session | 15 sessions/mo | 60 (2/day) | 120 (4/day) |
+|---|---|---|---|---|
+| Haiku 4.5 | $0.030 | $0.45 | $1.80 | $3.60 |
+| Sonnet 5 | $0.060 | $0.90 | $3.60 | $7.20 |
+| Opus 5 | $0.150 | $2.25 | $9.00 | $18.00 |
+
+Google Play takes 15%, so a $20/month tier nets $17. Even on Opus 5 —
+the best model — two sessions a day lands at $9 against $17. Break-even
+is ~113 sessions a month, roughly four every day; on Haiku it's ~567.
+
+**So the model price isn't the risk — unbounded use is.** One child who
+leaves it talking all afternoon, or one login shared around a family,
+is what eats the margin. That's a hard per-profile daily turn budget
+enforced on the server, not a cheaper model.
+
+**Levers, in the order they pay:** cache the system prompt (reads ~0.1x
+input, write 1.25x, so it pays from the second turn); keep a rolling
+history window instead of the whole conversation; cap `max_tokens` low,
+since a four-year-old doesn't want paragraphs; then the daily budget.
+Anything not live — a weekly "here's what they learned" summary for the
+parent — goes through the Batch API at 50%.
+
+**Safety is what decides whether this ships, not cost.** Ads were
+dropped here for distracting from learning (§6); an open-ended chatbot
+aimed at a three-year-old is a far bigger surface than an ad was. What
+makes it defensible is scoping it as a *teacher* and not a *companion*:
+it drills the current unit's words, the system prompt is server-owned
+and never client-supplied, refusals (`stop_reason: "refusal"`) are
+handled, and every transcript is visible to the parent. COPPA consent
+and Google Play's generative-AI and Families requirements both need
+reading before any code is written.
+
+**If it gets built:** smallest honest version first — one endpoint, one
+screen, hardcoded to Unit 1's words, metered per child — and measure
+real token counts from `usage` before committing to a price.

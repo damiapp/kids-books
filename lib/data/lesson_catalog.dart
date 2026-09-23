@@ -12,7 +12,7 @@ class LessonUnit {
     required this.lessonIds,
   });
 
-  /// Stable id — the unit's review lesson is tracked as `review_<id>`.
+  /// Stable id, and the stem of [reviewId].
   final String id;
 
   /// Small label above the title, e.g. "SECTION 1, UNIT 1".
@@ -20,6 +20,15 @@ class LessonUnit {
   final String title;
   final Color color;
   final List<String> lessonIds;
+
+  /// How the unit's review is tracked in ProgressService. The review is
+  /// built at runtime rather than sitting in the catalog, so its id has
+  /// to come from somewhere both the path and the profile can reach.
+  String get reviewId => 'review_$id';
+
+  /// Lessons plus the review — the unit's real length, which is what
+  /// both the path banner and the profile count against.
+  int get stepCount => lessonIds.length + 1;
 }
 
 // Card backgrounds. Kept soft so the emoji and word stay the loudest

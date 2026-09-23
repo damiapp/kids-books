@@ -38,6 +38,9 @@ class AuthService extends ChangeNotifier {
 
   bool get isSignedIn => currentUser != null || _mockEmail != null;
 
+  /// Whoever is signed in, real or demo — for display only.
+  String? get currentEmail => currentUser?.email ?? _mockEmail;
+
   /// Returns null on success, or a human-readable error message.
   Future<String?> signIn(String email, String password) async {
     final demo = matchDemoAccount(email, password);

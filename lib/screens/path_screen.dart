@@ -11,6 +11,7 @@ import '../services/progress_service.dart';
 import 'landing_screen.dart';
 import 'lesson_screen.dart';
 import 'paywall_screen.dart';
+import 'profile_screen.dart';
 
 enum _NodeState { completed, current, locked }
 
@@ -74,7 +75,7 @@ class _PathScreenState extends State<PathScreen> {
     picked.shuffle(Random(unit.id.hashCode));
 
     return Lesson(
-      id: 'review_${unit.id}',
+      id: unit.reviewId,
       title: '${unit.title} review',
       subtitle: 'A mix of everything in this unit',
       coverEmoji: '🏆',
@@ -118,7 +119,7 @@ class _PathScreenState extends State<PathScreen> {
   int _unitDoneCount(LessonUnit unit) {
     final done =
         unit.lessonIds.where(widget.progress.isCompleted).length;
-    return done + (widget.progress.isCompleted(_reviews[unit.id]!.id) ? 1 : 0);
+    return done + (widget.progress.isCompleted(unit.reviewId) ? 1 : 0);
   }
 
   Future<void> _openLesson(BuildContext context, Lesson lesson) async {
@@ -181,6 +182,17 @@ class _PathScreenState extends State<PathScreen> {
   String _formatWait(Duration d) {
     final minutes = d.inMinutes + (d.inSeconds % 60 > 0 ? 1 : 0);
     return minutes <= 1 ? '1 minute' : '$minutes minutes';
+  }
+
+  void _openProfile(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ProfileScreen(
+        progress: widget.progress,
+        energy: widget.energy,
+        entitlements: widget.entitlements,
+        auth: widget.auth,
+      ),
+    ));
   }
 
   void _openSubscribe(BuildContext context) {
@@ -268,6 +280,7 @@ class _PathScreenState extends State<PathScreen> {
     return Scaffold(
       drawer: _PathDrawer(
         entitlements: widget.entitlements,
+        onProfileTap: () => _openProfile(context),
         onSubscribeTap: () => _openSubscribe(context),
         onSignOutTap: widget.auth == null ? null : () => _signOut(context),
       ),
@@ -287,6 +300,7 @@ class _PathScreenState extends State<PathScreen> {
                   isPremium: widget.entitlements.subscriptionActive,
                   completedCount: completedCount,
                   onEnergyTap: () => _openSubscribe(context),
+                  onStarTap: () => _openProfile(context),
                 ),
                 Expanded(
                   child: CustomScrollView(
@@ -306,7 +320,7 @@ class _PathScreenState extends State<PathScreen> {
                                 // counting only lessons would read "3/3"
                                 // while the trophy is still unplayed.
                                 doneCount: _unitDoneCount(unit),
-                                total: unit.lessonIds.length + 1,
+                                total: unit.stepCount,
                               ),
                             ),
                             SliverToBoxAdapter(
@@ -334,12 +348,14 @@ class _TopBar extends StatelessWidget {
     required this.isPremium,
     required this.completedCount,
     required this.onEnergyTap,
+    required this.onStarTap,
   });
 
   final EnergyService energy;
   final bool isPremium;
   final int completedCount;
   final VoidCallback onEnergyTap;
+  final VoidCallback onStarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -366,6 +382,7 @@ class _TopBar extends StatelessWidget {
             emoji: '⭐',
             label: '$completedCount',
             color: scheme.primary,
+            onTap: onStarTap,
           ),
           if (isPremium) ...[
             const SizedBox(width: 14),
@@ -742,11 +759,13 @@ class _StartBubble extends StatelessWidget {
 class _PathDrawer extends StatelessWidget {
   const _PathDrawer({
     required this.entitlements,
+    required this.onProfileTap,
     required this.onSubscribeTap,
     this.onSignOutTap,
   });
 
   final EntitlementService entitlements;
+  final VoidCallback onProfileTap;
   final VoidCallback onSubscribeTap;
   final VoidCallback? onSignOutTap;
 
@@ -788,6 +807,14 @@ class _PathDrawer extends StatelessWidget {
               leading: const Icon(Icons.school_rounded),
               title: const Text('Learn'),
               onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.insights_rounded),
+              title: const Text('Progress'),
+              onTap: () {
+                Navigator.pop(context);
+                onProfileTap();
+              },
             ),
             ListTile(
               leading: Icon(subscribed
