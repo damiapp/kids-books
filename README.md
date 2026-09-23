@@ -113,7 +113,7 @@ lib/
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   services/entitlement_service.dart       subscription state + DemoEntitlementService
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
-  services/energy_service.dart            energy pool: spend, regen over time
+  services/energy_service.dart            energy pool: spend, regen, ad rewards
   services/progress_service.dart          per-lesson step + completion
   services/narration_service.dart         read-aloud / practice-prompt TTS
   services/auth_service.dart              Firebase email/password sign-in
@@ -123,6 +123,7 @@ lib/
   screens/path_screen.dart                learning path: units + winding lesson trail
   screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
+  screens/rewarded_ad_screen.dart         stand-in rewarded video (§3b)
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
 ```
@@ -155,6 +156,17 @@ the lesson or shows the "out of energy" dialog. Energy is only spent the
 *first* time a lesson is opened; resuming or replaying one already started
 is always free. Per-lesson progress (last step, completion) lives in
 `ProgressService`.
+
+Running dry isn't a dead end: the "out of energy" dialog offers a
+**rewarded video** worth `EnergyService.adReward` (5 — exactly one
+lesson, so the offer is "watch a video, play a lesson"), capped at
+`maxAdsPerDay` (5, a full bar's worth). The cap is what keeps the
+subscription worth buying: a parent can rescue a session that ran dry,
+but watching videos all day isn't an alternative to All Access. The
+count is stamped with the local calendar day it belongs to, so it reads
+as zero on a new day with no timer and no midnight cleanup. Energy is
+granted from the ad screen's *result*, not from it closing, so backing
+out of a video early earns nothing.
 
 This is why new lessons ship for free users too: adding one to the catalog
 needs no per-lesson wiring — everyone already passes through the same
@@ -190,6 +202,34 @@ Also uncomment the RevenueCat import at the top.
 > signatures in `revenuecat_entitlement_service.dart` against the version you
 > pin. The price shown in the app should come from the store, not the
 > `kSubscriptionPriceLabel` placeholder (that's demo-only).
+
+---
+
+## 3b. Turning on real rewarded ads
+
+`RewardedAdScreen` is a stand-in: it counts down, then pays out, which
+is the shape every rewarded SDK has. Only that screen knows about ads —
+`EnergyService.grantAdReward` just takes "the video counted" as input —
+so swapping in a real network doesn't touch the energy rules.
+
+To go live with **AdMob** (`google_mobile_ads`):
+
+1. Create an AdMob app and a **rewarded** ad unit; note the app id and
+   unit id.
+2. Add `google_mobile_ads` to `pubspec.yaml`, and put the AdMob app id
+   in `AndroidManifest.xml` as `com.google.android.gms.ads.APPLICATION_ID`.
+   The workflow regenerates `android/` on every run (§1b), so that has
+   to be a patch step in CI, not a one-off edit.
+3. Replace the push of `RewardedAdScreen` in `PathScreen._watchAdForEnergy`
+   with `RewardedAd.load(...)` + `show(onUserEarnedReward: ...)`, and keep
+   granting energy only on that callback.
+
+**Before shipping ads in a kids' app**, read Google Play's Families
+policy and AdMob's child-directed setup. Ads in an app aimed at under-13s
+have to be non-personalised and come from certified networks — in AdMob
+that means setting `tagForChildDirectedTreatment` and
+`maxAdContentRating` on the request configuration. Getting this wrong is
+a policy takedown, not a warning.
 
 ---
 
