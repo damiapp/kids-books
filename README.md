@@ -24,7 +24,7 @@ This folder contains only `lib/` and `pubspec.yaml`. Generate the Android
 platform folders, then run:
 
 ```bash
-cd peekado
+cd peekadoo
 flutter create .            # adds android/ (and other platforms) around lib/
 flutter pub get
 flutter run                 # with an Android device/emulator connected
@@ -47,7 +47,7 @@ in the cloud:
 2. The build runs automatically (or trigger it from the **Actions** tab →
    *Build APK* → *Run workflow*).
 3. When it finishes (~2–3 min), open the run and download the
-   **peekado-apk** artifact — inside is `app-release.apk`.
+   **peekadoo-apk** artifact — inside is `app-release.apk`.
 4. Copy it to your phone, allow "install unknown apps" for your file manager,
    and tap to install.
 
@@ -69,52 +69,27 @@ The app opens with a **landing page → a 2-slide "what is this app"
 explainer → an email/password sign-in screen**, backed by **Firebase
 Authentication**.
 
-The project is **`peekadoo-6529c`**, on the free **Spark** plan, and
-`lib/firebase_options.dart` now carries its real config. Check
-**Build → Authentication → Sign-in method** has **Email/Password**
-enabled (leave "Email link (passwordless)" off — nothing here uses it);
-if it isn't on, sign-in reports "Email sign-in isn't switched on for
-this app yet."
+The project is **`peekadoo-c5c2d`**, on the free **Spark** plan, and
+`lib/firebase_options.dart` carries its real config — sign-in works as
+shipped. Check **Build → Authentication → Sign-in method** has
+**Email/Password** enabled (leave "Email link (passwordless)" off —
+nothing here uses it); if it isn't on, sign-in reports "Email sign-in
+isn't switched on for this app yet."
 
-**Known mismatch — package name.** The Firebase project registers two
-Android apps, `com.peekadoo` and `com.peekadoo.peekadoo`. CI builds
-this app as **`app.peekado`** (the workflow's `--org app --project-name
-peekado`), so neither registration matches what installs on a phone.
-Email/password still works, because Firebase Auth validates the **API
-key**, not the app id. What breaks later is anything that binds an app
-to its package: **App Check / Play Integrity**, and per-app **Android
-restrictions on the API key** — the moment that key is restricted to
-`com.peekadoo` + a SHA-1, every request from this build is rejected.
+**The package name has to stay in sync in two places.** Firebase
+registers the Android app as **`app.peekadoo`**, and the workflow's
+`--org app --project-name peekadoo` is what produces that
+applicationId. Change one and you must change the other. Email/password
+would survive a mismatch, because Firebase Auth validates the **API
+key** rather than the app id — but **App Check / Play Integrity** and
+**Android restrictions on the API key** both check the package, and the
+day that key is restricted, every request from a mismatched build is
+rejected with an error that doesn't mention package names.
 
-Two ways to close it, and the choice is permanent once the app is
-published, because a Play Store package name can never be changed:
-
-- **Register `app.peekado`** as a third Android app in the project and
-  put its app id in `firebase_options.dart`. Nothing about the app
-  changes; the installed build keeps its identity.
-- **Rebuild as `com.peekadoo`** by changing the workflow to `--org com
-  --project-name peekadoo`. That matches what's registered, but bakes
-  the "Peekadoo" spelling into the app's permanent identity, and the
-  package change makes it a *different app* to Android — a fresh
-  install, not an update.
-
-The spare `com.peekadoo.peekadoo` registration can be deleted either
-way.
-
-`storageBucket` is `peekadoo-6529c.firebasestorage.app`, **not**
-`.appspot.com` — projects created since late 2024 use the newer domain,
-and guessing the old one silently breaks any future Storage use.
-
-**Email enumeration protection is on** (the default for projects created
-after Sept 2023). A wrong password and an unknown account both come back
-as `invalid-credential`, on purpose, so nobody can probe which emails
-have accounts. `AuthService._friendlyMessage` maps that to one message
-that doesn't say which half was wrong — keep it that way if you edit it,
-or the protection is undone from the client side.
-
-Email/password auth is free and unlimited on Spark. Note for §7: Cloud
-Functions needs the pay-as-you-go **Blaze** plan, so the AI-teacher
-backend would mean leaving the free tier.
+This is also the app's permanent identity: **a Play Store package name
+can never be changed after publishing**, and to Android a package
+change is a different app — a fresh install rather than an update,
+with local progress left behind in the old one.
 
 Unlike the RevenueCat/Play key elsewhere in this app, Firebase's client
 config isn't a secret — it's meant to ship inside the app. Access is

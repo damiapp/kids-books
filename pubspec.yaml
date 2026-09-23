@@ -1,11 +1,11 @@
-name: peekado
+name: peekadoo
 description: Peekado — short listen-and-tap lessons for preschoolers. Free energy refills over time; All Access removes the cap.
 publish_to: "none"
 # Still pre-release. Convention while in dev: bump PATCH for small fixes,
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.12.2+31
+version: 0.13.0+32
 
 environment:
   sdk: ">=3.6.0 <4.0.0"

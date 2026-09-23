@@ -35,18 +35,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBnWA_9yHuPbrpGcS0GpRgHMacvmmdOoPs',
-    // NOTE: this app id is registered in Firebase against package name
-    // `com.peekadoo`, while CI builds this app as `app.peekado` (see the
-    // workflow's --org/--project-name). Email/password sign-in works
-    // anyway — it's the API key that's checked — but anything that binds
-    // an app to its package (App Check / Play Integrity, per-app API key
-    // restrictions) will reject it. See README §1c.
-    appId: '1:598826488581:android:5f2b1dc1e2f0e38d069d6c',
-    messagingSenderId: '598826488581',
-    projectId: 'peekadoo-6529c',
+    apiKey: 'AIzaSyDxBRrq7vLSND7eeHqwk0ymMge7lyNnsfo',
+    appId: '1:857741802405:android:a3de21aaf1be731e85464c',
+    messagingSenderId: '857741802405',
+    projectId: 'peekadoo-c5c2d',
     // Note the domain: projects created since late 2024 get
     // .firebasestorage.app, not the older .appspot.com.
-    storageBucket: 'peekadoo-6529c.firebasestorage.app',
+    storageBucket: 'peekadoo-c5c2d.firebasestorage.app',
   );
 }

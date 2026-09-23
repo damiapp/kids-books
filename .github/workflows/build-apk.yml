@@ -24,8 +24,10 @@ jobs:
       # This repo ships only lib/ + pubspec.yaml, so generate the Android
       # project files. --platforms=android keeps it minimal and skips the
       # files that already exist (your lib/ and pubspec.yaml are untouched).
-      # --org + --project-name set the Android applicationId: app.peekado.
-      - run: flutter create --platforms=android --org app --project-name peekado .
+      # --org + --project-name set the Android applicationId: app.peekadoo,
+      # which has to match the package name registered in Firebase (§1c) —
+      # App Check and API key restrictions check it.
+      - run: flutter create --platforms=android --org app --project-name peekadoo .
 
       - run: flutter pub get
 
@@ -33,5 +35,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: peekado-apk
+          name: peekadoo-apk
           path: build/app/outputs/flutter-apk/app-release.apk
