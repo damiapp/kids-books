@@ -57,7 +57,7 @@ class AuthService extends ChangeNotifier {
           .signInWithEmailAndPassword(email: email, password: password);
       return null;
     } on FirebaseAuthException catch (e) {
-      return e.message ?? 'Sign in failed. Please try again.';
+      return _friendlyMessage(e, fallback: 'Sign in failed. Please try again.');
     }
   }
 
@@ -68,8 +68,43 @@ class AuthService extends ChangeNotifier {
           .createUserWithEmailAndPassword(email: email, password: password);
       return null;
     } on FirebaseAuthException catch (e) {
-      return e.message ?? 'Account creation failed. Please try again.';
+      return _friendlyMessage(e,
+          fallback: 'Account creation failed. Please try again.');
     }
+  }
+
+  /// Firebase's own `message` is written for developers ("The supplied auth
+  /// credential is incorrect, malformed or has expired"), which is not
+  /// something to show a parent at 7am.
+  ///
+  /// `invalid-credential` is the one that matters: with email enumeration
+  /// protection — on by default for projects created after Sept 2023 —
+  /// a wrong password and an unknown account both return it, precisely so
+  /// nobody can probe which emails have accounts. The message below keeps
+  /// that property: it never says which half was wrong. `user-not-found`
+  /// and `wrong-password` are kept for projects with protection turned
+  /// off, where they can still appear.
+  String _friendlyMessage(FirebaseAuthException e, {required String fallback}) {
+    return switch (e.code) {
+      'invalid-credential' ||
+      'user-not-found' ||
+      'wrong-password' =>
+        'That email and password don\'t match. Check both and try again.',
+      'invalid-email' => 'That doesn\'t look like an email address.',
+      'user-disabled' => 'This account has been turned off.',
+      'email-already-in-use' =>
+        'There\'s already an account with that email. Try signing in.',
+      'weak-password' => 'Pick a longer password — at least 6 characters.',
+      'too-many-requests' =>
+        'Too many tries. Wait a minute, then have another go.',
+      'network-request-failed' =>
+        'No connection. Check your internet and try again.',
+      // Shows up when Email/Password hasn't been switched on in the
+      // Firebase console — worth naming rather than hiding.
+      'operation-not-allowed' =>
+        'Email sign-in isn\'t switched on for this app yet.',
+      _ => e.message ?? fallback,
+    };
   }
 
   Future<void> signOut() async {

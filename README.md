@@ -65,21 +65,43 @@ The APK lands in `build/app/outputs/flutter-apk/`.
 
 ## 1c. Turning on real sign-in (Firebase Authentication)
 
-The app now opens with a **landing page → a 2-slide "what is this app"
+The app opens with a **landing page → a 2-slide "what is this app"
 explainer → an email/password sign-in screen**, backed by **Firebase
-Authentication**. It ships with placeholder Firebase config, so it builds
-and runs today — sign-in/sign-up will just fail with an "API key not
-valid" error until you plug in a real project:
+Authentication**.
 
-1. Create a project at https://console.firebase.google.com.
-2. **Build → Authentication → Get started → Sign-in method** → enable
-   **Email/Password**.
-3. **Project settings → General → Your apps** → add an Android app (package
-   name `app.peekado`, matching the workflow's `--org app --project-name
-   peekado`).
-4. Copy the config values shown (API key, App ID, Messaging sender ID,
-   Project ID) into `lib/firebase_options.dart`, replacing the
-   `YOUR_FIREBASE_*` placeholders in the `android` `FirebaseOptions`.
+The project is **`peekadoo-6529c`**, on the free **Spark** plan.
+`lib/firebase_options.dart` already carries its project-level values
+(`projectId`, `messagingSenderId`, `storageBucket`). **Two per-app
+values are still missing**, and sign-in fails with "API key not valid"
+until they're filled in:
+
+1. **Project settings → General → Your apps** → register an **Android**
+   app with package name exactly `app.peekado` (it has to match the
+   workflow's `--org app --project-name peekado`). Skip the
+   `google-services.json` download and the Gradle plugin steps — this app
+   configures Firebase in Dart instead.
+2. Copy **Web API key** (Project settings → General) into `apiKey`, and
+   the registered app's **App ID** (`1:598826488581:android:…`) into
+   `appId`.
+3. **Build → Authentication → Sign-in method** → make sure
+   **Email/Password** is enabled (and leave "Email link (passwordless)"
+   off — nothing here uses it). If it isn't on, sign-in reports "Email
+   sign-in isn't switched on for this app yet."
+
+`storageBucket` is `peekadoo-6529c.firebasestorage.app`, **not**
+`.appspot.com` — projects created since late 2024 use the newer domain,
+and guessing the old one silently breaks any future Storage use.
+
+**Email enumeration protection is on** (the default for projects created
+after Sept 2023). A wrong password and an unknown account both come back
+as `invalid-credential`, on purpose, so nobody can probe which emails
+have accounts. `AuthService._friendlyMessage` maps that to one message
+that doesn't say which half was wrong — keep it that way if you edit it,
+or the protection is undone from the client side.
+
+Email/password auth is free and unlimited on Spark. Note for §7: Cloud
+Functions needs the pay-as-you-go **Blaze** plan, so the AI-teacher
+backend would mean leaving the free tier.
 
 Unlike the RevenueCat/Play key elsewhere in this app, Firebase's client
 config isn't a secret — it's meant to ship inside the app. Access is

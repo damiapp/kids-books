@@ -35,10 +35,15 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
+    // Web API key, from Project settings → General.
     apiKey: 'YOUR_FIREBASE_ANDROID_API_KEY',
+    // Only exists once the Android app is registered against the package
+    // name app.peekado. Looks like 1:598826488581:android:....
     appId: 'YOUR_FIREBASE_ANDROID_APP_ID',
-    messagingSenderId: 'YOUR_FIREBASE_MESSAGING_SENDER_ID',
-    projectId: 'YOUR_FIREBASE_PROJECT_ID',
-    storageBucket: 'YOUR_FIREBASE_PROJECT_ID.appspot.com',
+    messagingSenderId: '598826488581',
+    projectId: 'peekadoo-6529c',
+    // Note the domain: projects created since late 2024 get
+    // .firebasestorage.app, not the older .appspot.com.
+    storageBucket: 'peekadoo-6529c.firebasestorage.app',
   );
 }
