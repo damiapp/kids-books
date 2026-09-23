@@ -11,7 +11,6 @@ import '../services/progress_service.dart';
 import 'landing_screen.dart';
 import 'lesson_screen.dart';
 import 'paywall_screen.dart';
-import 'rewarded_ad_screen.dart';
 
 enum _NodeState { completed, current, locked }
 
@@ -131,7 +130,7 @@ class _PathScreenState extends State<PathScreen> {
     if (!alreadyStarted && !isPremium) {
       final spent = await widget.energy.spend(EnergyService.costPerLesson);
       if (!spent) {
-        if (context.mounted) _showOutOfEnergy(context, lesson);
+        if (context.mounted) _showOutOfEnergy(context);
         return;
       }
     }
@@ -151,80 +150,32 @@ class _PathScreenState extends State<PathScreen> {
       ));
   }
 
-  /// [pending] is the lesson they were trying to start, so a video
-  /// watched here can open it straight away instead of making them find
-  /// it again.
-  void _showOutOfEnergy(BuildContext context, Lesson pending) {
+  void _showOutOfEnergy(BuildContext context) {
     final wait = widget.energy.timeUntilNext;
-    final canWatchAd = widget.energy.canWatchAd;
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Out of energy'),
         content: Text(
-          [
-            if (canWatchAd)
-              'Watch a short video for ${EnergyService.adReward} energy '
-                  '— enough for this lesson.'
-            else if (wait != null)
-              'More energy in about ${_formatWait(wait)}.'
-            else
-              'Come back soon for more energy.',
-            'All Access has unlimited energy, with no videos.',
-          ].join('\n\n'),
+          wait == null
+              ? 'Come back soon for more energy, or get All Access for unlimited energy.'
+              : 'More energy in about ${_formatWait(wait)}, or get All Access for unlimited energy.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Not now'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
               _openSubscribe(context);
             },
             child: const Text('Get All Access'),
           ),
-          if (canWatchAd)
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                _watchAdForEnergy(context, pending);
-              },
-              child: Text('Watch a video +${EnergyService.adReward} ⚡'),
-            ),
         ],
       ),
     );
-  }
-
-  /// Plays a rewarded video, pays out, then opens the lesson they came
-  /// for. The reward is granted from the screen's result rather than
-  /// from it being dismissed, so closing the video early pays nothing.
-  Future<void> _watchAdForEnergy(BuildContext context, Lesson pending) async {
-    final earned = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const RewardedAdScreen()),
-    );
-    if (earned != true) return;
-
-    final granted = await widget.energy.grantAdReward();
-    if (!context.mounted) return;
-    if (!granted) {
-      // The day's videos ran out, or regen filled the bar while it
-      // played. Nothing was lost — just don't claim energy was added.
-      _showLocked(context, 'No videos left today.');
-      return;
-    }
-
-    final left = widget.energy.adsLeftToday;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text('+${EnergyService.adReward} energy'
-            '${left > 0 ? ' · $left more today' : ' · last one today'}'),
-        duration: const Duration(seconds: 2),
-      ));
-    _openLesson(context, pending);
   }
 
   String _formatWait(Duration d) {
