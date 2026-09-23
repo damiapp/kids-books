@@ -1,5 +1,5 @@
 
-# Peekado — a Duolingo-style lesson app for kids 3+ (Android first)
+# Peekadoo — a Duolingo-style lesson app for kids 3+ (Android first)
 
 A Flutter app of short listen-then-practice lessons for early learners. Each
 lesson teaches a word (picture + sound), then quizzes it back with a
@@ -105,8 +105,8 @@ Firebase entirely and set local entitlements to match:
 
 | Account | Email | Password | Entitlements |
 |---|---|---|---|
-| 👑 All Access subscriber | `subscriber@demo.peekado.app` | `demo1234` | Subscription active — unlimited energy |
-| 🙂 Brand-new user | `newuser@demo.peekado.app` | `demo1234` | Free plan — limited energy, refills over time |
+| 👑 All Access subscriber | `subscriber@demo.peekadoo.app` | `demo1234` | Subscription active — unlimited energy |
+| 🙂 Brand-new user | `newuser@demo.peekadoo.app` | `demo1234` | Free plan — limited energy, refills over time |
 
 Tap either button on the login screen to sign in instantly, or type the
 credentials by hand. These only work for sign-in, not the "create account"

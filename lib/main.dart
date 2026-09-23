@@ -31,7 +31,7 @@ Future<void> main() async {
   await entitlements.init();
   await progress.init();
   await energy.init();
-  runApp(PeekadoApp(
+  runApp(PeekadooApp(
     entitlements: entitlements,
     auth: auth,
     progress: progress,
@@ -39,8 +39,8 @@ Future<void> main() async {
   ));
 }
 
-class PeekadoApp extends StatelessWidget {
-  const PeekadoApp({
+class PeekadooApp extends StatelessWidget {
+  const PeekadooApp({
     super.key,
     required this.entitlements,
     required this.auth,
@@ -56,7 +56,7 @@ class PeekadoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Peekado',
+      title: 'Peekadoo',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

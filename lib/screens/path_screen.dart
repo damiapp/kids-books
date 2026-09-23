@@ -833,7 +833,7 @@ class _PathDrawer extends StatelessWidget {
                 children: [
                   const Text('📚', style: TextStyle(fontSize: 36)),
                   const SizedBox(height: 10),
-                  const Text('Peekado',
+                  const Text('Peekadoo',
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),

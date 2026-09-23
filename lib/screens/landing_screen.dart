@@ -43,7 +43,7 @@ class LandingScreen extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               const Text(
-                'Peekado',
+                'Peekadoo',
                 style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 10),
