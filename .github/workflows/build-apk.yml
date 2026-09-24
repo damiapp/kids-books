@@ -41,6 +41,13 @@ jobs:
 
       - run: flutter pub get
 
+      # Both of these rewrite files inside the generated android/ folder,
+      # so they run after `flutter create` and before the build — and on
+      # every run, because that folder is thrown away each time.
+      - run: dart run flutter_launcher_icons
+
+      - run: python3 .github/scripts/patch_app_label.py
+
       # Flutter's template signs release builds with signingConfigs.debug,
       # and a runner regenerates that keystore on every run — which is why
       # every APK carried a different signature and Android refused to

@@ -176,6 +176,8 @@ from the debug defaults.
 ## 2. What's inside
 
 ```
+assets/icon/                              launcher icon art (§5)
+tool/generate_icon.py                     redraws it
 lib/
   models/lesson.dart                      Lesson (title, cover, words) + LessonWord
   data/lesson_catalog.dart                the 14 lessons + the path's units
@@ -314,7 +316,18 @@ shipped inside the app.
 
 ## 5. Replacing the placeholder art
 
-Pages use emoji as stand-in art. For real illustrations, add an `imageUrl`
+**The launcher icon** is real, not a placeholder: `tool/generate_icon.py`
+draws it (peek-a-boo — two eyes over a wall, which is what the name is)
+and writes `assets/icon/icon.png` plus an `icon_foreground.png` for
+Android's adaptive icons, where the launcher composites the art over a
+colour and then crops to whatever shape it likes. That's why there are
+two files and why the foreground art is drawn smaller — anything
+outside the middle ~66% can be cropped away, so only the wall is
+allowed to bleed. `flutter_launcher_icons` turns them into the mipmaps
+during CI, so nothing has to be committed into the generated `android/`
+folder. Change a colour or a proportion and rerun the script.
+
+Lesson pages, though, use emoji as stand-in art. For real illustrations, add an `imageUrl`
 (R2-hosted) or bundled `imageAsset` to `LessonWord` and render it in
 `lesson_screen.dart` instead of the emoji `Text` — both the learn step and
 the practice-step choice cards use it.

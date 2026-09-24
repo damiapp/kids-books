@@ -5,7 +5,7 @@ publish_to: "none"
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.13.3+35
+version: 0.14.0+36
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -30,6 +30,18 @@ dependencies:
 
 dev_dependencies:
   flutter_lints: ^4.0.0
+  # Generates the Android launcher icons from assets/icon/ at build time,
+  # so the generated android/ folder needs nothing committed to it.
+  flutter_launcher_icons: ^0.14.1
+
+# Redraw the source art with `python3 tool/generate_icon.py`.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#3AA7A0"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
