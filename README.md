@@ -180,7 +180,7 @@ assets/icon/                              launcher icon art (§5)
 tool/generate_icon.py                     redraws it
 lib/
   models/lesson.dart                      Lesson (title, cover, words) + LessonWord
-  data/lesson_catalog.dart                the 14 lessons + the path's units
+  data/lesson_catalog.dart                44 lessons across 15 units, 260 words
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   data/achievements.dart                  badge list + the stats they're judged on
   services/entitlement_service.dart       subscription state + DemoEntitlementService
@@ -201,8 +201,8 @@ lib/
   main.dart                               swap Demo <-> RevenueCat here
 ```
 
-**The path:** `LessonCatalog.units` defines the trail — each unit is an
-ordered list of lesson ids, closed out by a trophy node. Order is what
+**The path:** `LessonCatalog.units` defines the trail — 15 units in
+three sections, each an ordered list of lesson ids, closed out by a trophy node. Order is what
 gates progression: a lesson unlocks once the one before it is finished,
 so the whole path is one flat sequence split into units. The trophy sits
 *in* that sequence — it's the last step of its unit, so the next unit
