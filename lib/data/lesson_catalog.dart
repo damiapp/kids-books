@@ -164,6 +164,46 @@ class LessonCatalog {
       color: Color(0xFFD4562F),
       lessonIds: ['sports', 'moving', 'on_the_road'],
     ),
+
+    // ── Section 4 ─────────────────────────────────────────────────────
+    LessonUnit(
+      id: 'more_first_words',
+      section: 'SECTION 4, UNIT 1',
+      title: 'More first words',
+      color: Color(0xFF2E8B87),
+      lessonIds: ['colours_two', 'numbers_six_ten', 'loud_and_quiet'],
+    ),
+    LessonUnit(
+      id: 'little_animals',
+      section: 'SECTION 4, UNIT 2',
+      title: 'Little animals',
+      color: Color(0xFFCF7A3A),
+      lessonIds: ['baby_animals', 'pets', 'at_the_zoo'],
+    ),
+    // Two lessons, not three: every third candidate either repeated a
+    // word already taught or needed a glyph too new to trust, and a
+    // padded lesson is worse than a short unit.
+    LessonUnit(
+      id: 'busy_hands',
+      section: 'SECTION 4, UNIT 3',
+      title: 'Busy hands',
+      color: Color(0xFF9A5BA8),
+      lessonIds: ['craft', 'tools'],
+    ),
+    LessonUnit(
+      id: 'getting_dressed',
+      section: 'SECTION 4, UNIT 4',
+      title: 'Getting dressed',
+      color: Color(0xFF3F7FB5),
+      lessonIds: ['warm_clothes', 'summer_clothes', 'accessories'],
+    ),
+    LessonUnit(
+      id: 'more_feelings',
+      section: 'SECTION 4, UNIT 5',
+      title: 'More feelings',
+      color: Color(0xFFC44E6D),
+      lessonIds: ['big_feelings', 'manners', 'friends'],
+    ),
   ];
 
   static const List<Lesson> lessons = [
@@ -850,6 +890,223 @@ class LessonCatalog {
         LessonWord(emoji: '⛑️', word: 'Helmet', text: 'The helmet keeps our head safe.', color: _apricot),
         LessonWord(emoji: '🚧', word: 'Sign', text: 'The sign tells us to be careful.', color: _butter),
         LessonWord(emoji: '🚏', word: 'Bus stop', text: 'We wait at the bus stop.', color: _slate),
+      ],
+    ),
+
+    // ── SECTION 4, UNIT 1 · More first words ──────────────────────────
+    Lesson(
+      id: 'colours_two',
+      title: 'More Colours',
+      subtitle: 'Beyond the rainbow',
+      coverEmoji: '🎨',
+      coverColor: _slate,
+      words: [
+        LessonWord(emoji: '🐷', word: 'Pink', text: 'The little pig is pink.', color: _pink),
+        LessonWord(emoji: '🐻', word: 'Brown', text: 'The bear is brown and furry.', color: _apricot),
+        LessonWord(emoji: '⚫', word: 'Black', text: 'The night sky is black.', color: _slate),
+        LessonWord(emoji: '⬜', word: 'White', text: 'The snow is white and cold.', color: _sky),
+        LessonWord(emoji: '🌫️', word: 'Grey', text: 'The fog is soft and grey.', color: _slate),
+      ],
+    ),
+    Lesson(
+      id: 'numbers_six_ten',
+      title: 'Count to Ten',
+      subtitle: 'Numbers six to ten',
+      coverEmoji: '🔟',
+      coverColor: _mint,
+      words: [
+        LessonWord(emoji: '6️⃣', word: 'Six', text: 'Six comes after five.', color: _mint),
+        LessonWord(emoji: '7️⃣', word: 'Seven', text: 'Seven days make a week.', color: _sky),
+        LessonWord(emoji: '8️⃣', word: 'Eight', text: 'An octopus has eight arms.', color: _lavender),
+        LessonWord(emoji: '9️⃣', word: 'Nine', text: 'Nine is one less than ten.', color: _peach),
+        LessonWord(emoji: '🔟', word: 'Ten', text: 'We have ten fingers.', color: _butter),
+      ],
+    ),
+    Lesson(
+      id: 'loud_and_quiet',
+      title: 'Loud and Quiet',
+      subtitle: 'Sounds we make',
+      coverEmoji: '📢',
+      coverColor: _butter,
+      words: [
+        LessonWord(emoji: '📢', word: 'Loud', text: 'The drum is very loud.', color: _blush),
+        LessonWord(emoji: '🤫', word: 'Quiet', text: 'We are quiet when someone sleeps.', color: _sky),
+        LessonWord(emoji: '🎤', word: 'Sing', text: 'We sing together.', color: _pink),
+        LessonWord(emoji: '🗣️', word: 'Shout', text: 'We shout when we are outside.', color: _apricot),
+        LessonWord(emoji: '💥', word: 'Bang', text: 'The balloon goes bang!', color: _butter),
+        LessonWord(emoji: '👂', word: 'Listen', text: 'We listen with both ears.', color: _mint),
+      ],
+    ),
+
+    // ── SECTION 4, UNIT 2 · Little animals ────────────────────────────
+    Lesson(
+      id: 'baby_animals',
+      title: 'Baby Animals',
+      subtitle: 'Little ones and their names',
+      coverEmoji: '🐤',
+      coverColor: _butter,
+      words: [
+        LessonWord(emoji: '🐶', word: 'Puppy', text: 'The puppy is a baby dog.', color: _apricot),
+        LessonWord(emoji: '🐱', word: 'Kitten', text: 'The kitten is a baby cat.', color: _peach),
+        LessonWord(emoji: '🐤', word: 'Chick', text: 'The chick is a baby chicken.', color: _butter),
+        LessonWord(emoji: '🐰', word: 'Bunny', text: 'The bunny has long soft ears.', color: _blush),
+        LessonWord(emoji: '🐖', word: 'Piglet', text: 'The piglet is a baby pig.', color: _pink),
+        LessonWord(emoji: '🐥', word: 'Duckling', text: 'The duckling follows its mother.', color: _butter),
+      ],
+    ),
+    Lesson(
+      id: 'pets',
+      title: 'Our Pets',
+      subtitle: 'Animals who live with us',
+      coverEmoji: '🐕',
+      coverColor: _peach,
+      words: [
+        LessonWord(emoji: '🐕', word: 'Dog', text: 'The dog wags its tail.', color: _apricot),
+        LessonWord(emoji: '🐈', word: 'Cat', text: 'The cat sleeps all afternoon.', color: _peach),
+        LessonWord(emoji: '🐇', word: 'Rabbit', text: 'The rabbit eats a carrot.', color: _blush),
+        LessonWord(emoji: '🐹', word: 'Hamster', text: 'The hamster is small and soft.', color: _butter),
+        LessonWord(emoji: '🐠', word: 'Goldfish', text: 'The goldfish swims in the bowl.', color: _sky),
+        LessonWord(emoji: '🐦', word: 'Bird', text: 'The bird sings in the morning.', color: _mint),
+      ],
+    ),
+    Lesson(
+      id: 'at_the_zoo',
+      title: 'At the Zoo',
+      subtitle: 'Animals from far away',
+      coverEmoji: '🐼',
+      coverColor: _sage,
+      words: [
+        LessonWord(emoji: '🦓', word: 'Zebra', text: 'The zebra has black and white stripes.', color: _slate),
+        LessonWord(emoji: '🦛', word: 'Hippo', text: 'The hippo sits in the cool water.', color: _slate),
+        LessonWord(emoji: '🦏', word: 'Rhino', text: 'The rhino has a horn on its nose.', color: _sage),
+        LessonWord(emoji: '🐼', word: 'Panda', text: 'The panda eats bamboo all day.', color: _mint),
+        LessonWord(emoji: '🐨', word: 'Koala', text: 'The koala holds on to the tree.', color: _sage),
+        LessonWord(emoji: '🐫', word: 'Camel', text: 'The camel walks across the hot sand.', color: _apricot),
+      ],
+    ),
+
+    // ── SECTION 4, UNIT 3 · Busy hands ────────────────────────────────
+    Lesson(
+      id: 'craft',
+      title: 'Making Things',
+      subtitle: 'Cutting, drawing and sticking',
+      coverEmoji: '✂️',
+      coverColor: _lavender,
+      words: [
+        LessonWord(emoji: '✏️', word: 'Pencil', text: 'We draw a picture with a pencil.', color: _butter),
+        LessonWord(emoji: '✂️', word: 'Scissors', text: 'The scissors cut the paper.', color: _slate),
+        LessonWord(emoji: '🎨', word: 'Paint', text: 'We mix the paint to make new colours.', color: _lavender),
+        LessonWord(emoji: '🖍️', word: 'Crayon', text: 'The crayon colours it all in.', color: _blush),
+        LessonWord(emoji: '📄', word: 'Paper', text: 'We fold the paper in half.', color: _sky),
+        LessonWord(emoji: '🧴', word: 'Glue', text: 'The glue sticks it down.', color: _mint),
+      ],
+    ),
+    Lesson(
+      id: 'tools',
+      title: 'In the Toolbox',
+      subtitle: 'Things that help us fix',
+      coverEmoji: '🧰',
+      coverColor: _slate,
+      words: [
+        LessonWord(emoji: '🔧', word: 'Spanner', text: 'The spanner turns the bolt.', color: _slate),
+        LessonWord(emoji: '🔦', word: 'Torch', text: 'The torch shines in the dark.', color: _butter),
+        LessonWord(emoji: '📏', word: 'Ruler', text: 'The ruler shows how long it is.', color: _sky),
+        LessonWord(emoji: '🧲', word: 'Magnet', text: 'The magnet picks up the pin.', color: _blush),
+        LessonWord(emoji: '🔋', word: 'Battery', text: 'The battery makes the toy go.', color: _mint),
+        LessonWord(emoji: '🧰', word: 'Toolbox', text: 'Everything lives in the toolbox.', color: _apricot),
+      ],
+    ),
+
+    // ── SECTION 4, UNIT 4 · Getting dressed ───────────────────────────
+    Lesson(
+      id: 'warm_clothes',
+      title: 'Wrap Up Warm',
+      subtitle: 'Clothes for a cold day',
+      coverEmoji: '🧣',
+      coverColor: _sky,
+      words: [
+        LessonWord(emoji: '🧥', word: 'Jumper', text: 'The jumper keeps us cosy.', color: _lavender),
+        LessonWord(emoji: '🧣', word: 'Scarf', text: 'The scarf goes round our neck.', color: _blush),
+        LessonWord(emoji: '🥾', word: 'Boots', text: 'The boots keep our feet dry.', color: _apricot),
+        LessonWord(emoji: '🧤', word: 'Mittens', text: 'The mittens keep our fingers warm.', color: _pink),
+        LessonWord(emoji: '🥿', word: 'Slippers', text: 'We wear slippers inside the house.', color: _peach),
+      ],
+    ),
+    Lesson(
+      id: 'summer_clothes',
+      title: 'Sunny Day Clothes',
+      subtitle: 'Clothes for a hot day',
+      coverEmoji: '👗',
+      coverColor: _butter,
+      words: [
+        LessonWord(emoji: '👗', word: 'Dress', text: 'The dress twirls when we spin.', color: _pink),
+        LessonWord(emoji: '🩳', word: 'Shorts', text: 'We wear shorts when it is hot.', color: _mint),
+        LessonWord(emoji: '👡', word: 'Sandals', text: 'The sandals are open at the toes.', color: _apricot),
+        LessonWord(emoji: '🕶️', word: 'Sunglasses', text: 'The sunglasses keep the sun out.', color: _slate),
+        LessonWord(emoji: '🩱', word: 'Swimsuit', text: 'We wear a swimsuit to swim.', color: _sky),
+        LessonWord(emoji: '🧢', word: 'Cap', text: 'The cap shades our eyes.', color: _butter),
+      ],
+    ),
+    Lesson(
+      id: 'accessories',
+      title: 'Bits and Pieces',
+      subtitle: 'Little things we wear',
+      coverEmoji: '👓',
+      coverColor: _lavender,
+      words: [
+        LessonWord(emoji: '⌚', word: 'Watch', text: 'The watch tells us the time.', color: _slate),
+        LessonWord(emoji: '👓', word: 'Glasses', text: 'The glasses help us see clearly.', color: _sky),
+        LessonWord(emoji: '💍', word: 'Ring', text: 'The ring goes on a finger.', color: _butter),
+        LessonWord(emoji: '👑', word: 'Crown', text: 'The crown is gold and shiny.', color: _butter),
+        LessonWord(emoji: '📿', word: 'Necklace', text: 'The necklace goes round our neck.', color: _lavender),
+        LessonWord(emoji: '👛', word: 'Purse', text: 'The purse holds our money.', color: _blush),
+      ],
+    ),
+
+    // ── SECTION 4, UNIT 5 · More feelings ─────────────────────────────
+    Lesson(
+      id: 'big_feelings',
+      title: 'Big Feelings',
+      subtitle: 'More ways we feel',
+      coverEmoji: '🤩',
+      coverColor: _pink,
+      words: [
+        LessonWord(emoji: '🏅', word: 'Proud', text: 'We feel proud when we try hard.', color: _butter),
+        LessonWord(emoji: '😳', word: 'Shy', text: 'Sometimes we feel shy with new people.', color: _blush),
+        LessonWord(emoji: '🤩', word: 'Excited', text: 'We feel excited before a party.', color: _pink),
+        LessonWord(emoji: '😌', word: 'Calm', text: 'Slow breaths help us feel calm.', color: _mint),
+        LessonWord(emoji: '🤪', word: 'Silly', text: 'Being silly makes everyone laugh.', color: _lavender),
+        LessonWord(emoji: '🦸', word: 'Brave', text: 'We are brave when something is hard.', color: _sky),
+      ],
+    ),
+    Lesson(
+      id: 'manners',
+      title: 'Kind Words',
+      subtitle: 'Words that help',
+      coverEmoji: '🙏',
+      coverColor: _mint,
+      words: [
+        LessonWord(emoji: '🙏', word: 'Please', text: 'We say please when we ask.', color: _mint),
+        LessonWord(emoji: '🙌', word: 'Thank you', text: 'We say thank you when we get something.', color: _butter),
+        LessonWord(emoji: '😔', word: 'Sorry', text: 'We say sorry when we make a mistake.', color: _sky),
+        LessonWord(emoji: '🙋', word: 'Hello', text: 'We say hello when we meet someone.', color: _peach),
+        LessonWord(emoji: '👋', word: 'Goodbye', text: 'We say goodbye when we leave.', color: _apricot),
+        LessonWord(emoji: '🤲', word: 'Share', text: 'We share our toys with everyone.', color: _blush),
+      ],
+    ),
+    Lesson(
+      id: 'friends',
+      title: 'Friends Together',
+      subtitle: 'Being a good friend',
+      coverEmoji: '🤗',
+      coverColor: _blush,
+      words: [
+        LessonWord(emoji: '🤗', word: 'Hug', text: 'A hug makes everything better.', color: _pink),
+        LessonWord(emoji: '🤝', word: 'Help', text: 'We help each other.', color: _mint),
+        LessonWord(emoji: '🙂', word: 'Smile', text: 'A smile says we are happy to see you.', color: _butter),
+        LessonWord(emoji: '👫', word: 'Team', text: 'We work as a team.', color: _sky),
+        LessonWord(emoji: '💝', word: 'Kind', text: 'Being kind is the best thing to be.', color: _blush),
+        LessonWord(emoji: '👭', word: 'Together', text: 'Everything is better together.', color: _lavender),
       ],
     ),
   ];
