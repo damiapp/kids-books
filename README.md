@@ -180,7 +180,9 @@ assets/icon/                              launcher icon art (§5)
 tool/generate_icon.py                     redraws it
 lib/
   models/lesson.dart                      Lesson (title, cover, words) + LessonWord
-  data/lesson_catalog.dart                58 lessons across 20 units, 341 words
+  data/lesson_catalog.dart                the live catalog + LessonUnit (loaded, not compiled in)
+  services/catalog_service.dart           loads it: cache -> bundled, refresh in background (§4)
+  assets/catalog.json                     the content itself: 58 lessons, 20 units, 341 words
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   data/achievements.dart                  badge list + the stats they're judged on
   services/entitlement_service.dart       subscription state + DemoEntitlementService
@@ -307,12 +309,45 @@ Also uncomment the RevenueCat import at the top.
 
 ## 4. Shipping new lessons without an app update
 
-Right now the catalog is bundled in the app, so a new lesson means a new
-release. To publish without going through review each time, move
-`lesson_catalog.dart` to a **JSON manifest + images served from Cloudflare R2**
-(zero egress fees) and fetch it at startup. Every learner sees new lessons
-instantly — access is decided by energy/subscription, not by which lessons
-shipped inside the app.
+The catalog lives in **`assets/catalog.json`**, not in Dart. Editing
+that file and bumping its `version` is how new lessons ship — installed
+apps pick them up on their own, with no release and no store review.
+
+**How a launch resolves it** (`CatalogService`):
+
+1. The newest catalog already on the device loads first — the one
+   cached from an earlier run, or the copy bundled in the APK.
+   **Startup never waits on the network.**
+2. Only then does a background fetch look for something newer.
+
+A catalog fetched now is cached for the **next** launch rather than
+swapped in live. Replacing the lessons under a child who is halfway
+through one would strand their saved place mid-lesson, and no amount of
+freshness is worth that.
+
+**Nothing here can brick the app.** A downloaded catalog is parsed and
+checked before it is stored — every unit must reference lessons that
+exist, and no lesson may have fewer than three words, since a
+tap-the-match question needs two wrong answers to sit beside the right
+one. That check runs without touching the catalog the app is currently
+running on. Every failure is survivable: no connection, a 404, a
+truncated body, unparseable JSON, a broken reference. A bad remote file
+costs a user their *update*, never their app. A cached catalog that
+somehow fails later is dropped and the bundled one takes over.
+
+**Where it's hosted:** the repo's own raw file, which adds no vendor and
+makes publishing a commit. `CatalogService._remoteUrl` is one constant —
+point it at R2, Firebase Storage or any CDN when that stops being
+enough.
+
+**To publish new lessons:** edit `assets/catalog.json`, bump `version`,
+push to `main`. Apps fetch it on their next run and use it the run after.
+Keep the bundled copy current too — it's what a fresh install starts
+from, and the floor everything else is measured against.
+
+`tool/catalog_to_json.py` is the one-way conversion that produced the
+JSON from the old Dart catalog. It's kept as a record; the JSON is the
+source of truth now.
 
 ## 5. Replacing the placeholder art
 

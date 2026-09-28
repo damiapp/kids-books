@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/catalog_service.dart';
 import 'services/energy_service.dart';
 import 'services/entitlement_service.dart';
 import 'services/progress_service.dart';
@@ -15,6 +18,10 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Before anything reads a lesson. Uses whatever is already on the
+  // device — cached or bundled — so this never waits on a network.
+  await CatalogService.load();
 
   final auth = AuthService();
   final progress = ProgressService();
@@ -31,6 +38,11 @@ Future<void> main() async {
   await entitlements.init();
   await progress.init();
   await energy.init();
+
+  // Deliberately not awaited: a newer catalog is cached for next
+  // launch, never swapped in under a child mid-lesson (README §4).
+  unawaited(CatalogService.refreshInBackground());
+
   runApp(PeekadooApp(
     entitlements: entitlements,
     auth: auth,

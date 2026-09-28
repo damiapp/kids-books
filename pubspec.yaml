@@ -5,7 +5,7 @@ publish_to: "none"
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.16.0+38
+version: 0.17.0+39
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -14,7 +14,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  shared_preferences: ^2.3.2      # used only by the demo entitlement store
+  shared_preferences: ^2.3.2      # demo entitlements, progress, catalog cache
+  http: ^1.2.2                    # fetches the lesson catalog (README §4)
 
   # Sign-in (landing → onboarding → login flow). See lib/firebase_options.dart.
   firebase_core: ^4.15.0
@@ -45,6 +46,7 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
-  # When you replace emoji placeholders with real art:
-  # assets:
-  #   - assets/books/
+  assets:
+    # The catalog that ships inside the APK. A newer one may be fetched
+    # at runtime and cached, but this is always the floor.
+    - assets/catalog.json
