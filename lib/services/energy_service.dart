@@ -15,15 +15,21 @@ class EnergyService extends ChangeNotifier {
   static const _energyKey = 'energy_current';
   static const _lastUpdateKey = 'energy_last_update_millis';
 
+  /// Where "now" comes from — see ProgressService.clock. Regen is
+  /// measured in ten-minute steps, so a test would otherwise have to
+  /// sit and wait for one.
+  @visibleForTesting
+  static DateTime Function() clock = DateTime.now;
+
   int _energy = maxEnergy;
-  DateTime _lastUpdate = DateTime.now();
+  DateTime _lastUpdate = clock();
 
   int get current => _energy;
 
   /// Null once full; otherwise how long until the next point regenerates.
   Duration? get timeUntilNext {
     if (_energy >= maxEnergy) return null;
-    final elapsed = DateTime.now().difference(_lastUpdate);
+    final elapsed = clock().difference(_lastUpdate);
     final remainder = regenInterval - elapsed;
     return remainder.isNegative ? Duration.zero : remainder;
   }
@@ -35,7 +41,7 @@ class EnergyService extends ChangeNotifier {
     _energy = prefs.getInt(_energyKey) ?? maxEnergy;
     final lastMillis = prefs.getInt(_lastUpdateKey);
     _lastUpdate = lastMillis == null
-        ? DateTime.now()
+        ? clock()
         : DateTime.fromMillisecondsSinceEpoch(lastMillis);
     await _regenerate();
   }
@@ -47,10 +53,10 @@ class EnergyService extends ChangeNotifier {
 
   Future<void> _regenerate() async {
     if (_energy >= maxEnergy) {
-      _lastUpdate = DateTime.now();
+      _lastUpdate = clock();
       return;
     }
-    final elapsed = DateTime.now().difference(_lastUpdate);
+    final elapsed = clock().difference(_lastUpdate);
     final ticks = elapsed.inMilliseconds ~/ regenInterval.inMilliseconds;
     if (ticks <= 0) return;
     _energy = (_energy + ticks).clamp(0, maxEnergy).toInt();

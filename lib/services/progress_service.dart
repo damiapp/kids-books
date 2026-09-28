@@ -67,12 +67,18 @@ class ProgressService extends ChangeNotifier {
 
   bool get dailyGoalMet => lessonsToday >= dailyGoal;
 
+  /// Where "now" comes from. Swapped in tests to walk the clock
+  /// forward — a streak's rollover is logic that only misbehaves at
+  /// midnight, which is no time to find out about it.
+  @visibleForTesting
+  static DateTime Function() clock = DateTime.now;
+
   static String _dayStamp(DateTime d) => '${d.year}-${d.month}-${d.day}';
 
-  static String get _today => _dayStamp(DateTime.now());
+  static String get _today => _dayStamp(clock());
 
   static String get _yesterday =>
-      _dayStamp(DateTime.now().subtract(const Duration(days: 1)));
+      _dayStamp(clock().subtract(const Duration(days: 1)));
 
   /// A streak is still alive if its last day was today or yesterday.
   static bool _isCurrent(String day) => day == _today || day == _yesterday;

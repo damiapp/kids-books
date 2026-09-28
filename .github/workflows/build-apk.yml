@@ -41,6 +41,12 @@ jobs:
 
       - run: flutter pub get
 
+      # Before the build, because a broken catalog or a broken streak
+      # is cheaper to find here than on a phone — and since the catalog
+      # now ships over the network, these are the only thing standing
+      # between a bad edit and an installed app (README §4).
+      - run: flutter test
+
       # Both of these rewrite files inside the generated android/ folder,
       # so they run after `flutter create` and before the build — and on
       # every run, because that folder is thrown away each time.

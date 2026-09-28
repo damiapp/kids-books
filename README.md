@@ -182,6 +182,7 @@ lib/
   models/lesson.dart                      Lesson (title, cover, words) + LessonWord
   data/lesson_catalog.dart                the live catalog + LessonUnit (loaded, not compiled in)
   services/catalog_service.dart           loads it: cache -> bundled, refresh in background (§4)
+test/                                     catalog format, streaks, energy — run by CI before every build
   assets/catalog.json                     the content itself: 58 lessons, 20 units, 341 words
   data/demo_accounts.dart                 instant-login demo accounts (§1c)
   data/achievements.dart                  badge list + the stats they're judged on
@@ -344,6 +345,22 @@ enough.
 push to `main`. Apps fetch it on their next run and use it the run after.
 Keep the bundled copy current too — it's what a fresh install starts
 from, and the floor everything else is measured against.
+
+**The format is enforced, not assumed.** `test/catalog_test.dart` runs
+against the real `assets/catalog.json` on every push, and CI runs
+`flutter test` before it builds anything. It checks what a content edit
+can plausibly get wrong: a unit pointing at a lesson that doesn't
+exist, a lesson no unit lists (unreachable, and its energy cost never
+paid), duplicate ids, a lesson with under three words, a word taught
+twice, a missing emoji, a sentence with no full stop, and emoji too new
+for an older Android to draw. It also checks the guard itself — that
+`LessonCatalog.parse` *rejects* each of those — because that guard is
+what protects a phone from a bad remote file.
+
+So a malformed catalog fails the build rather than reaching anyone. The
+one gap worth knowing: the remote file is fetched from `main`, so a
+push that skips CI could still publish bad content. Let the build go
+green before assuming a content update is live.
 
 `tool/catalog_to_json.py` is the one-way conversion that produced the
 JSON from the old Dart catalog. It's kept as a record; the JSON is the
