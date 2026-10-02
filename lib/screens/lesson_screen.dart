@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../models/lesson.dart';
 import '../services/narration_service.dart';
 import '../services/progress_service.dart';
+import '../widgets/motion.dart';
+import 'lesson_complete_screen.dart';
 
 sealed class _Step {
   const _Step();
@@ -152,24 +154,18 @@ class _LessonScreenState extends State<LessonScreen> {
   Future<void> _finishLesson() async {
     // Completion is reaching the end, not landing on the last question —
     // the final practice step still has to be answered to get here.
-    widget.progress.markCompleted(widget.lesson.id);
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Lesson complete! 🎉'),
-        content: Text('Great job finishing "${widget.lesson.title}".'),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Done'),
-          ),
-        ],
-      ),
-    );
+    // Awaited so the celebration shows the streak *including* this one.
+    _narration.stop();
+    await widget.progress.markCompleted(widget.lesson.id);
+    if (!mounted) return;
+    await Navigator.of(context).push(LessonCompleteScreen.route(
+      lesson: widget.lesson,
+      streak: widget.progress.streak,
+      lessonsToday: widget.progress.lessonsToday,
+      dailyGoal: ProgressService.dailyGoal,
+    ));
+    // Continue, or back — either way the lesson is over.
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _onPageChanged(int i) {
@@ -298,14 +294,20 @@ class _LearnView extends StatelessWidget {
                       children: [
                         // Same reason as the choice cards: a five-emoji
                         // word has to shrink to fit, not wrap.
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 28),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              word.emoji,
-                              softWrap: false,
-                              style: const TextStyle(fontSize: 120),
+                        // Pops in as the page slides into view, so each
+                        // new word arrives rather than just being there.
+                        PopIn(
+                          from: 0.4,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 28),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                word.emoji,
+                                softWrap: false,
+                                style: const TextStyle(fontSize: 120),
+                              ),
                             ),
                           ),
                         ),
@@ -438,6 +440,9 @@ class _PracticeViewState extends State<_PracticeView> {
   LessonWord? _correctSelected;
   LessonWord? _wrongTapped;
 
+  /// Bumped on every wrong tap so the same card can shake twice in a row.
+  int _wrongTaps = 0;
+
   void _choose(LessonWord choice) {
     if (_correctSelected != null) return;
     if (choice.word == widget.target.word) {
@@ -445,10 +450,15 @@ class _PracticeViewState extends State<_PracticeView> {
         _correctSelected = choice;
         _wrongTapped = null;
       });
-      Future.delayed(const Duration(milliseconds: 550), widget.onCorrect);
+      // Long enough for the burst to land before the page moves on —
+      // the celebration is the point of getting it right.
+      Future.delayed(const Duration(milliseconds: 700), widget.onCorrect);
     } else {
       widget.onWrong();
-      setState(() => _wrongTapped = choice);
+      setState(() {
+        _wrongTapped = choice;
+        _wrongTaps++;
+      });
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) setState(() => _wrongTapped = null);
       });
@@ -481,11 +491,19 @@ class _PracticeViewState extends State<_PracticeView> {
               crossAxisSpacing: 14,
               children: [
                 for (final choice in widget.choices)
-                  _ChoiceCard(
-                    word: choice,
-                    isCorrect: _correctSelected == choice,
-                    isWrong: _wrongTapped == choice,
-                    onTap: () => _choose(choice),
+                  Burst(
+                    active: _correctSelected == choice,
+                    child: Shake(
+                      trigger: _wrongTapped == choice ? _wrongTaps : 0,
+                      child: Pressable(
+                        child: _ChoiceCard(
+                          word: choice,
+                          isCorrect: _correctSelected == choice,
+                          isWrong: _wrongTapped == choice,
+                          onTap: () => _choose(choice),
+                        ),
+                      ),
+                    ),
                   ),
               ],
             ),

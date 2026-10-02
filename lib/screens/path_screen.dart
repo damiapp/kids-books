@@ -13,6 +13,7 @@ import 'lesson_screen.dart';
 import 'paywall_screen.dart';
 import 'profile_screen.dart';
 import 'word_bank_screen.dart';
+import '../widgets/motion.dart';
 
 enum _NodeState { completed, current, locked }
 
@@ -686,7 +687,8 @@ class _PathNode extends StatelessWidget {
           ),
           const SizedBox(height: 6),
         ],
-        SizedBox(
+        Pressable(
+          child: SizedBox(
           width: _size + 16,
           height: _size + _depth + 16,
           child: Stack(
@@ -743,6 +745,7 @@ class _PathNode extends StatelessWidget {
             ],
           ),
         ),
+        ),
       ],
     );
   }
@@ -755,7 +758,10 @@ class _StartBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    // Floats, because it's the one thing on the map asking to be tapped.
+    return Bob(
+      height: 3,
+      child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
@@ -793,6 +799,7 @@ class _StartBubble extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 }
@@ -1003,12 +1010,15 @@ class _TrophyCoinState extends State<_TrophyCoin>
             onTap: widget.onTap,
             // Twenty of these exist at once, one per unit; the boundary
             // keeps each one's animation from repainting the whole map.
-            child: RepaintBoundary(
-              child: SizedBox.square(
-                dimension: _stage,
-                child: AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, _) => _stageAt(_controller.value),
+            child: Pressable(
+              pressedScale: 0.9,
+              child: RepaintBoundary(
+                child: SizedBox.square(
+                  dimension: _stage,
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, _) => _stageAt(_controller.value),
+                  ),
                 ),
               ),
             ),

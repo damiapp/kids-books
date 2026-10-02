@@ -199,6 +199,8 @@ test/                                     catalog format, streaks, energy — ru
   screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
   screens/profile_screen.dart             progress, daily goal, tricky words, achievements
   screens/word_bank_screen.dart           every word learned, tap to hear again
+  screens/lesson_complete_screen.dart     the end-of-lesson celebration
+  widgets/motion.dart                     shared motion: press, shake, burst, pop-in, bob, confetti
   screens/paywall_screen.dart             All Access (unlimited energy) upsell
   firebase_options.dart                   Firebase config (placeholder — see §1c)
   main.dart                               swap Demo <-> RevenueCat here
@@ -254,6 +256,17 @@ that drill calls `forgiveMiss`, so the list empties as words are learned
 the only way past the question, and forgiving it would erase the miss
 just recorded. The drill costs no energy: charging to practise the hard
 words would price the most useful thing in the app.
+
+**Motion** lives in one file, `widgets/motion.dart`, so the app moves in
+one voice: everything tappable sinks under a finger and springs back
+(`Pressable`); a right answer bounces and bursts sparkles (`Burst`); a
+wrong one gives a short, damped shake (`Shake`) — "try again", never a
+telling-off; each new word pops in as its page arrives (`PopIn`); the
+START bubble floats (`Bob`); and finishing a lesson is a confetti screen
+with the streak and today's goal, not a system dialog. Every piece
+honours the system reduce-motion setting and renders its finished state
+without moving — some children are genuinely unsettled by motion, and
+it's their parents who turn that setting on.
 
 **Achievements** (`data/achievements.dart`) are pure functions of an
 `AchievementStats` record, computed on the fly. Nothing about them is
