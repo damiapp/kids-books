@@ -216,8 +216,12 @@ to extend it.
 Each unit's banner lives on the map and sticks to the top while that
 unit is on screen, until the next unit's banner pushes it out. That's
 what `SliverMainAxisGroup` buys: pinned headers sitting directly in the
-scroll view would pile up on each other instead. The trophy
-plays that unit's **review** — a six-word mix built at runtime by
+scroll view would pile up on each other instead. The trophy is drawn
+as a spinning gold coin (`_TrophyCoin`) — gold and turning even while
+locked, because a reward only pulls a child forward if they can see it
+before earning it; state changes how loud it is (glow, sparkles, how
+often it turns), never whether it's gold, and the system reduce-motion
+setting stops it entirely. It plays that unit's **review** — a six-word mix built at runtime by
 `_buildReview`, round-robined across every lesson in the unit so all of
 them are represented. It's tracked as `review_<unit id>`, seeded by the
 unit id so a half-finished review resumes on the right word, and it

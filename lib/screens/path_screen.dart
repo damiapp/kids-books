@@ -284,12 +284,10 @@ class _PathScreenState extends State<PathScreen> {
     rows.add(_PathRow(
       index: unit.lessonIds.length,
       label: 'Unit review',
-      child: _PathNode(
+      child: _TrophyCoin(
         state: reviewState,
-        icon: Icons.emoji_events_rounded,
         progress:
             reviewState == _NodeState.current ? _progressOf(review) : null,
-        showStart: reviewState == _NodeState.current,
         onTap: reviewState == _NodeState.locked
             ? () => _showLocked(
                 context, 'Finish every lesson in this unit first.')
@@ -895,6 +893,349 @@ class _PathDrawer extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// A unit's review, drawn as a spinning gold coin rather than one more
+/// circle on the trail.
+///
+/// It's the prize at the end of every unit, so it looks like one from the
+/// moment the unit opens — still gold and still turning while locked,
+/// because a reward only pulls a child forward if they can see it before
+/// they've earned it. State changes how *loud* it is, never whether it's
+/// gold: locked turns slowly with a soft glow and a padlock; up next
+/// turns faster, pulses and sparkles; won glints now and then with a tick.
+class _TrophyCoin extends StatefulWidget {
+  const _TrophyCoin({required this.state, this.progress, this.onTap});
+
+  final _NodeState state;
+  final double? progress;
+  final VoidCallback? onTap;
+
+  @override
+  State<_TrophyCoin> createState() => _TrophyCoinState();
+}
+
+class _TrophyCoinState extends State<_TrophyCoin>
+    with SingleTickerProviderStateMixin {
+  static const _coin = 84.0;
+  static const _stage = 128.0;
+  static const _thickness = 9.0;
+  static const _edgeLayers = 8;
+
+  static const _gold = Color(0xFFF0B429);
+  static const _goldLight = Color(0xFFFFE48A);
+  static const _goldDeep = Color(0xFFC98A0C);
+  static const _edge = Color(0xFFA9700A);
+  static const _ink = Color(0xFF8A5A00);
+
+  late final AnimationController _controller =
+      AnimationController(vsync: this, duration: _period);
+
+  bool _reduceMotion = false;
+
+  /// One cycle is one turn plus a rest — see the spin curve in build.
+  /// Shorter means the coin asks for attention more often.
+  Duration get _period => switch (widget.state) {
+        _NodeState.current => const Duration(milliseconds: 2600),
+        _NodeState.locked => const Duration(milliseconds: 4200),
+        _NodeState.completed => const Duration(milliseconds: 6000),
+      };
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // A spinning, glowing, floating object is precisely what the system
+    // reduce-motion setting exists to switch off.
+    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _syncMotion();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TrophyCoin old) {
+    super.didUpdateWidget(old);
+    if (old.state != widget.state) {
+      _controller.duration = _period;
+      _syncMotion(restart: true);
+    }
+  }
+
+  void _syncMotion({bool restart = false}) {
+    if (_reduceMotion) {
+      _controller
+        ..stop()
+        ..value = 0;
+    } else if (restart || !_controller.isAnimating) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final current = widget.state == _NodeState.current;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (current) ...[
+          GestureDetector(
+            onTap: widget.onTap,
+            child: _StartBubble(color: Theme.of(context).colorScheme.primary),
+          ),
+          const SizedBox(height: 2),
+        ],
+        Semantics(
+          button: true,
+          label: switch (widget.state) {
+            _NodeState.locked => 'Unit review, locked',
+            _NodeState.current => 'Unit review, ready',
+            _NodeState.completed => 'Unit review, done',
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            // Twenty of these exist at once, one per unit; the boundary
+            // keeps each one's animation from repainting the whole map.
+            child: RepaintBoundary(
+              child: SizedBox.square(
+                dimension: _stage,
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) => _stageAt(_controller.value),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _stageAt(double t) {
+    final locked = widget.state == _NodeState.locked;
+    final current = widget.state == _NodeState.current;
+    final completed = widget.state == _NodeState.completed;
+
+    // One quick turn, then a rest. A coin that spins nonstop is tiring to
+    // look at; one that turns and pauses reads as a glint, and the pause
+    // is what makes the next turn catch the eye.
+    final spin = Curves.easeInOutCubic.transform((t / 0.4).clamp(0.0, 1.0));
+    final angle = spin * 2 * pi;
+    final wave = sin(t * 2 * pi);
+    final bob = completed ? 0.0 : wave * 3;
+    final glow = switch (widget.state) {
+      _NodeState.current => 0.55,
+      _NodeState.locked => 0.28,
+      _NodeState.completed => 0.0,
+    };
+
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        if (glow > 0)
+          Transform.scale(
+            scale: 0.92 + 0.12 * (0.5 + 0.5 * wave),
+            child: Container(
+              width: _coin + 40,
+              height: _coin + 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    _gold.withValues(alpha: glow),
+                    _gold.withValues(alpha: 0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        if (current)
+          for (final (dx, dy, phase, size) in const [
+            (-50.0, -34.0, 0.0, 16.0),
+            (48.0, -22.0, 0.33, 12.0),
+            (40.0, 40.0, 0.66, 14.0),
+          ])
+            Transform.translate(
+              offset: Offset(dx, dy + bob),
+              child: Opacity(
+                opacity: (0.5 + 0.5 * sin((t + phase) * 2 * pi)).clamp(0, 1),
+                child: Icon(Icons.auto_awesome, size: size, color: _gold),
+              ),
+            ),
+        Transform.translate(
+          offset: Offset(0, bob),
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              if (widget.progress != null)
+                SizedBox.square(
+                  dimension: _coin + 16,
+                  child: CircularProgressIndicator(
+                    value: widget.progress,
+                    strokeWidth: 5,
+                    color: _goldDeep,
+                    backgroundColor: const Color(0xFFE6E2D9),
+                  ),
+                ),
+              _coinAt(angle),
+              if (locked || completed)
+                Positioned(
+                  right: 0,
+                  bottom: 2,
+                  child: _Badge(
+                    icon: locked ? Icons.lock_rounded : Icons.check_rounded,
+                    color: locked
+                        ? const Color(0xFF9E9889)
+                        : const Color(0xFF58A700),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// The coin as a real 3D object: a stack of discs at different depths,
+  /// all turned together, so the edge shows as it turns instead of the
+  /// coin collapsing to a line like a sheet of paper.
+  Widget _coinAt(double angle) {
+    Matrix4 at(double z) => Matrix4.identity()
+      ..setEntry(3, 2, 0.0014) // perspective
+      ..rotateY(angle)
+      ..multiply(Matrix4.translationValues(0, 0, z));
+
+    // Whichever side faces the viewer is drawn last, on top. The two
+    // sides are the same design, so this is all "flipping" takes.
+    final front = cos(angle) >= 0;
+    const half = _thickness / 2;
+
+    return SizedBox.square(
+      dimension: _coin,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          for (var i = 0; i <= _edgeLayers; i++)
+            Transform(
+              alignment: Alignment.center,
+              transform: at(-half + _thickness * i / _edgeLayers),
+              child: const _Disc(color: _edge),
+            ),
+          Transform(
+            alignment: Alignment.center,
+            transform: at(front ? -half : half),
+            child: const _CoinFace(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Disc extends StatelessWidget {
+  const _Disc({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        child: const SizedBox.square(dimension: _TrophyCoinState._coin),
+      );
+}
+
+class _CoinFace extends StatelessWidget {
+  const _CoinFace();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: _TrophyCoinState._coin,
+      height: _TrophyCoinState._coin,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: _TrophyCoinState._goldDeep, width: 4),
+        gradient: const RadialGradient(
+          center: Alignment(-0.3, -0.35),
+          radius: 0.95,
+          colors: [
+            _TrophyCoinState._goldLight,
+            _TrophyCoinState._gold,
+            _TrophyCoinState._goldDeep,
+          ],
+          stops: [0.0, 0.55, 1.0],
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Inner rim — the line that makes a gold circle read as a coin
+          // rather than a button.
+          Container(
+            width: _TrophyCoinState._coin - 18,
+            height: _TrophyCoinState._coin - 18,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _TrophyCoinState._goldDeep.withValues(alpha: 0.55),
+                width: 2,
+              ),
+            ),
+          ),
+          const Icon(
+            Icons.emoji_events_rounded,
+            size: 40,
+            color: _TrophyCoinState._ink,
+          ),
+          // Fixed shine, upper left. It turns with the coin, which is
+          // exactly what sells it as metal catching light.
+          Positioned(
+            left: 16,
+            top: 13,
+            child: Transform.rotate(
+              angle: -0.6,
+              child: Container(
+                width: 22,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.55),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  const _Badge({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+      ),
+      child: Icon(icon, size: 15, color: Colors.white),
     );
   }
 }
