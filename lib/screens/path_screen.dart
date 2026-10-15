@@ -351,6 +351,15 @@ class _PathScreenState extends State<PathScreen> {
                   onStarTap: () => _openProfile(context),
                   streak: widget.progress.streak,
                 ),
+                // Everything a child needs is spoken now, so a phone with
+                // no English voice makes the app unusable for them. Says
+                // so plainly, for whoever set the phone up.
+                ValueListenableBuilder<bool?>(
+                  valueListenable: NarrationService.englishVoice,
+                  builder: (context, ok, _) => ok == false
+                      ? const _NoVoiceBanner()
+                      : const SizedBox.shrink(),
+                ),
                 Expanded(
                   child: CustomScrollView(
                     slivers: [
@@ -1266,6 +1275,40 @@ class _Badge extends StatelessWidget {
         border: Border.all(color: Colors.white, width: 3),
       ),
       child: Icon(icon, size: 15, color: Colors.white),
+    );
+  }
+}
+
+
+class _NoVoiceBanner extends StatelessWidget {
+  const _NoVoiceBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0BE),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('🔇', style: TextStyle(fontSize: 22)),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              // Every phone brand files this somewhere different, so it
+              // names the thing to search for rather than a path.
+              'Peekadoo reads every word aloud, but this phone has no '
+              'English voice. In Settings, search for "Text-to-speech" '
+              'and install English.',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
