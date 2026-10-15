@@ -154,6 +154,35 @@ class ProgressService extends ChangeNotifier {
     await prefs.setInt(_todayCountKey, _todayCount);
   }
 
+  /// Forgets everything recorded about this learner: progress, streaks,
+  /// and which words they found hard. Called when the account is deleted,
+  /// so "delete" removes what the app kept about a child rather than just
+  /// the login. (Energy is left alone — it's a game mechanic, not anything
+  /// about the child, and resetting it would make deleting an account a
+  /// way to refill it.)
+  Future<void> resetAll() async {
+    _lastStep.clear();
+    _completed.clear();
+    _misses.clear();
+    _streak = 0;
+    _longestStreak = 0;
+    _lastActiveDay = '';
+    _todayCount = 0;
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in const [
+      _stepKey,
+      _completedKey,
+      _missesKey,
+      _streakKey,
+      _longestStreakKey,
+      _lastActiveDayKey,
+      _todayCountKey,
+    ]) {
+      await prefs.remove(key);
+    }
+    notifyListeners();
+  }
+
   /// A wrong answer on [word]. This is what makes reviews and the
   /// practice drill spend their time where it's needed.
   Future<void> recordMiss(String word) async {

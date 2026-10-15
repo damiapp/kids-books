@@ -7,6 +7,8 @@ import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/progress_service.dart';
+import '../widgets/parental_gate.dart';
+import 'landing_screen.dart';
 import 'lesson_screen.dart';
 
 /// Where the learner stands: what they've finished, what they know, what
@@ -81,6 +83,74 @@ class ProfileScreen extends StatelessWidget {
         isPractice: true,
       ),
     ));
+  }
+
+  /// Behind the parent check first — of everything in the app, this is
+  /// the last thing a child should be able to reach by tapping around.
+  Future<void> _deleteAccount(BuildContext context) async {
+    final auth = this.auth;
+    if (auth == null) return;
+    if (!await ParentalGate.show(context) || !context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete this account?'),
+        content: const Text(
+          'This permanently deletes the account, and everything Peekadoo '
+          'has saved on this phone about the child using it: lessons '
+          'finished, streaks, and the words they found hard. It can\'t be '
+          'undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    var result = await auth.deleteAccount();
+    if (result == AuthService.needsPassword && context.mounted) {
+      final password = await showDialog<String>(
+        context: context,
+        builder: (_) => const _PasswordDialog(),
+      );
+      if (password == null || !context.mounted) return;
+      result = await auth.deleteAccount(password: password);
+    }
+    if (!context.mounted) return;
+    if (result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(result == AuthService.needsPassword
+            ? 'Please sign out, sign back in, and try again.'
+            : result),
+      ));
+      return;
+    }
+
+    await progress.resetAll();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => LandingScreen(
+          entitlements: entitlements,
+          auth: auth,
+          progress: progress,
+          energy: energy,
+        ),
+      ),
+      (route) => false,
+    );
   }
 
   @override
@@ -176,6 +246,19 @@ class ProfileScreen extends StatelessWidget {
                   longestStreak: progress.longestStreak,
                 ),
               ),
+              if (auth != null) ...[
+                const SizedBox(height: 36),
+                // Quiet on purpose: findable by a parent who looks, never
+                // the thing a child's eye lands on.
+                Center(
+                  child: TextButton(
+                    onPressed: () => _deleteAccount(context),
+                    style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF9E9889)),
+                    child: const Text('Delete account'),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -728,6 +811,53 @@ class _AchievementTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Firebase asks for the password again before it will delete an account
+/// that signed in a while ago. Its own widget so the text controller is
+/// created and disposed with the dialog.
+class _PasswordDialog extends StatefulWidget {
+  const _PasswordDialog();
+
+  @override
+  State<_PasswordDialog> createState() => _PasswordDialogState();
+}
+
+class _PasswordDialogState extends State<_PasswordDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final password = _controller.text;
+    if (password.isNotEmpty) Navigator.of(context).pop(password);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Confirm your password'),
+      content: TextField(
+        controller: _controller,
+        obscureText: true,
+        autofocus: true,
+        decoration: const InputDecoration(labelText: 'Password'),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Delete')),
+      ],
     );
   }
 }

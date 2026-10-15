@@ -145,6 +145,37 @@ void main() {
     });
   });
 
+  group('deleting the account', () {
+    test('forgets everything recorded about the learner', () async {
+      final progress = await fresh();
+      await progress.markCompleted('colours');
+      await progress.setLastStep('numbers', 3);
+      await progress.recordMiss('Red');
+
+      await progress.resetAll();
+
+      expect(progress.isCompleted('colours'), isFalse);
+      expect(progress.lastStepFor('numbers'), isNull);
+      expect(progress.trickiestWords, isEmpty);
+      expect(progress.streak, 0);
+      expect(progress.longestStreak, 0);
+      expect(progress.lessonsToday, 0);
+    });
+
+    test('and it stays forgotten after a restart', () async {
+      final first = await fresh();
+      await first.markCompleted('colours');
+      await first.recordMiss('Red');
+      await first.resetAll();
+
+      final second = await fresh();
+      expect(second.isCompleted('colours'), isFalse);
+      expect(second.missesFor('Red'), 0);
+      expect(second.longestStreak, 0,
+          reason: 'deleting must remove it from storage, not just memory');
+    });
+  });
+
   group('lesson progress', () {
     test('remembers the last step', () async {
       final progress = await fresh();

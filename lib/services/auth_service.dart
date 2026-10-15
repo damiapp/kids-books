@@ -107,6 +107,40 @@ class AuthService extends ChangeNotifier {
     };
   }
 
+  /// What [deleteAccount] returns when Firebase wants the password again
+  /// first. It refuses to delete for any sign-in older than a few minutes,
+  /// which for a parent opening this weeks later is nearly always.
+  static const needsPassword = 'needs-password';
+
+  /// Deletes the signed-in account — Google Play requires this to exist,
+  /// in the app, for any app that creates accounts. Returns null on
+  /// success, [needsPassword], or a message to show.
+  Future<String?> deleteAccount({String? password}) async {
+    // Demo accounts live only on this phone; there's nothing remote to
+    // delete, so signing out is the whole of it.
+    if (_mockEmail != null) {
+      await signOut();
+      return null;
+    }
+    final user = currentUser;
+    if (user == null) return null;
+    try {
+      if (password != null) {
+        final email = user.email;
+        if (email == null) return 'This account has no email to confirm with.';
+        await user.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: email, password: password),
+        );
+      }
+      await user.delete();
+      return null;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') return needsPassword;
+      return _friendlyMessage(e,
+          fallback: 'The account could not be deleted. Please try again.');
+    }
+  }
+
   Future<void> signOut() async {
     if (_mockEmail != null) {
       _mockEmail = null;
