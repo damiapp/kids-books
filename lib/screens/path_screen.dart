@@ -12,6 +12,8 @@ import '../services/progress_service.dart';
 import 'landing_screen.dart';
 import 'lesson_screen.dart';
 import 'paywall_screen.dart';
+import 'rest_screen.dart';
+import '../widgets/parental_gate.dart';
 import 'profile_screen.dart';
 import 'word_bank_screen.dart';
 import '../widgets/motion.dart';
@@ -206,37 +208,23 @@ class _PathScreenState extends State<PathScreen> {
       ));
   }
 
+  /// Out of energy: a rest for the child, not a sales pitch. See
+  /// RestScreen for why the subscription moved behind a parent check.
   void _showOutOfEnergy(BuildContext context) {
-    final wait = widget.energy.timeUntilNext;
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Out of energy'),
-        content: Text(
-          wait == null
-              ? 'Come back soon for more energy, or get All Access for unlimited energy.'
-              : 'More energy in about ${_formatWait(wait)}, or get All Access for unlimited energy.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Not now'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(dialogContext).pop();
-              _openSubscribe(context);
-            },
-            child: const Text('Get All Access'),
-          ),
-        ],
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => RestScreen(
+        progress: widget.progress,
+        energy: widget.energy,
+        entitlements: widget.entitlements,
       ),
-    );
+    ));
   }
 
-  String _formatWait(Duration d) {
-    final minutes = d.inMinutes + (d.inSeconds % 60 > 0 ? 1 : 0);
-    return minutes <= 1 ? '1 minute' : '$minutes minutes';
+  /// Every route to the paywall from a screen a child uses goes through
+  /// here, so none of them is one stray tap from a payment screen.
+  Future<void> _openGrownUps(BuildContext context) async {
+    if (!await ParentalGate.show(context) || !context.mounted) return;
+    _openSubscribe(context);
   }
 
   void _openWordBank(BuildContext context) {
@@ -341,7 +329,7 @@ class _PathScreenState extends State<PathScreen> {
         entitlements: widget.entitlements,
         onWordBankTap: () => _openWordBank(context),
         onProfileTap: () => _openProfile(context),
-        onSubscribeTap: () => _openSubscribe(context),
+        onSubscribeTap: () => _openGrownUps(context),
         onSignOutTap: widget.auth == null ? null : () => _signOut(context),
       ),
       body: SafeArea(
@@ -359,7 +347,7 @@ class _PathScreenState extends State<PathScreen> {
                   energy: widget.energy,
                   isPremium: widget.entitlements.subscriptionActive,
                   completedCount: completedCount,
-                  onEnergyTap: () => _openSubscribe(context),
+                  onEnergyTap: () => _openGrownUps(context),
                   onStarTap: () => _openProfile(context),
                   streak: widget.progress.streak,
                 ),

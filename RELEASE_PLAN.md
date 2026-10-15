@@ -10,7 +10,7 @@ shows up attached to the change that caused it.
 | | Step | Who |
 |---|---|---|
 | ✅ | **1. Speak everything a child needs to understand.** The app assumed its user can read: learn cards were silent until you found the speaker button, and every instruction ("Which one did you hear?", "Swipe left…", "Great job!") was text only. | me |
-| ⬜ | **2. No paywall in front of a child.** "Out of energy" mid-session is a meltdown for a three-year-old and reads as predatory to parents. The child gets a kind "come back later"; anything about money sits behind a parent check. | me |
+| ✅ | **2. No paywall in front of a child.** "Out of energy" mid-session is a meltdown for a three-year-old and reads as predatory to parents. The child gets a kind "come back later"; anything about money sits behind a parent check. | me |
 | ⬜ | **3. A better voice.** The phone's speech engine varies a lot. Pick the best English voice actually installed, and never fail silently when there isn't one. | me |
 | ⬜ | **4. Account deletion.** Google Play requires it for any app that creates accounts — in the app, and on a web page. | me, then you host the page |
 | ⬜ | **5. Privacy policy and store declarations.** Mandatory for a children's app that collects an email address. I draft; you publish and have it read by someone who can sign off on it. | me, then you |
