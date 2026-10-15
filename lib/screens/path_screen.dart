@@ -7,6 +7,7 @@ import '../models/lesson.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
+import '../services/narration_service.dart';
 import '../services/progress_service.dart';
 import 'landing_screen.dart';
 import 'lesson_screen.dart';
@@ -39,11 +40,28 @@ class PathScreen extends StatefulWidget {
 }
 
 class _PathScreenState extends State<PathScreen> {
+  final _narration = NarrationService();
+
+  /// Marks whichever node is playable next, so a tap on a locked one can
+  /// take the child there.
+  final _currentKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     widget.energy.refresh();
   }
+
+  @override
+  void dispose() {
+    _narration.dispose();
+    super.dispose();
+  }
+
+  Widget _keyIfCurrent(_NodeState state, Widget row) =>
+      state == _NodeState.current
+          ? KeyedSubtree(key: _currentKey, child: row)
+          : row;
 
   /// One review per unit, built once — _stateOf walks this list for
   /// every node on screen. Building once also pins each review's word
@@ -165,7 +183,21 @@ class _PathScreenState extends State<PathScreen> {
     ));
   }
 
+  /// A tap on something not unlocked yet. The snackbar is for a parent;
+  /// a child can't read it. What a child gets is the map gliding to the
+  /// lesson they *can* play, and being told so out loud.
   void _showLocked(BuildContext context, String message) {
+    _narration.speak("Not yet! Let's play this one first.");
+    final target = _currentKey.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeInOutCubic,
+        // Lower than the top edge, so it lands clear of the pinned banner.
+        alignment: 0.45,
+      );
+    }
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(SnackBar(
@@ -259,7 +291,7 @@ class _PathScreenState extends State<PathScreen> {
     for (var i = 0; i < unit.lessonIds.length; i++) {
       final lesson = LessonCatalog.byId(unit.lessonIds[i]);
       final state = _stateOf(lesson);
-      rows.add(_PathRow(
+      rows.add(_keyIfCurrent(state, _PathRow(
         index: i,
         label: lesson.title,
         child: _PathNode(
@@ -276,13 +308,13 @@ class _PathScreenState extends State<PathScreen> {
               ? () => _showLocked(context, 'Finish the previous lesson first.')
               : () => _openLesson(context, lesson),
         ),
-      ));
+      )));
     }
 
     final review = _reviews[unit.id]!;
     final reviewState = _stateOf(review);
 
-    rows.add(_PathRow(
+    rows.add(_keyIfCurrent(reviewState, _PathRow(
       index: unit.lessonIds.length,
       label: 'Unit review',
       child: _TrophyCoin(
@@ -294,7 +326,7 @@ class _PathScreenState extends State<PathScreen> {
                 context, 'Finish every lesson in this unit first.')
             : () => _openLesson(context, review),
       ),
-    ));
+    )));
 
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 20),

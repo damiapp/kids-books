@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -111,26 +112,70 @@ class _LessonScreenState extends State<LessonScreen> {
   bool get _canSwipe =>
       _steps[_index] is! _PracticeStep || _answered.contains(_index);
 
+  /// Fires if a child sits on a learn card without swiping. They can't
+  /// read the "swipe" hint, so after a while it gets said out loud —
+  /// once, and only to a child who seems stuck, so it never nags one
+  /// who already knows.
+  Timer? _nudge;
+
+  /// Rotated rather than random, so the same praise never comes twice in
+  /// a row. Short on purpose: the next card starts speaking soon after,
+  /// and a long phrase would be talked over.
+  static const _praise = [
+    'Yes!',
+    'Well done!',
+    "That's right!",
+    'Great job!',
+    'You got it!',
+  ];
+  int _praiseCount = 0;
+
   @override
   void initState() {
     super.initState();
     final saved = widget.progress.lastStepFor(widget.lesson.id) ?? 0;
     _index = saved.clamp(0, _steps.length - 1).toInt();
     _controller = PageController(initialPage: _index);
-    _speakIfPractice(_steps[_index]);
+    _speakStep(_index);
   }
 
   @override
   void dispose() {
+    _nudge?.cancel();
     _controller.dispose();
     _narration.dispose();
     super.dispose();
   }
 
-  void _speakIfPractice(_Step step) {
-    if (step is _PracticeStep) {
-      _narration.speak(step.target.word);
+  /// Everything a card needs to be understood without reading it. The
+  /// app's user is three: a word on screen that isn't spoken might as
+  /// well not be there.
+  void _speakStep(int i) {
+    _nudge?.cancel();
+    switch (_steps[i]) {
+      case _LearnStep(:final word):
+        _narration.speak('${word.word}. ${word.text}');
+        _nudge = Timer(const Duration(seconds: 7), () {
+          if (mounted && _index == i && !_narration.isSpeaking) {
+            _narration.speak('Swipe to see what comes next!');
+          }
+        });
+      case _PracticeStep(:final target):
+        _narration.speak(_question(target));
     }
+  }
+
+  /// The pause after "find" lets the word land on its own, and the
+  /// phrasing works for every kind of word in the catalog — "Can you
+  /// find... red?", "...happy?", "...under?" — where "Find the ___"
+  /// would turn half of them into nonsense.
+  String _question(LessonWord word) => 'Can you find... ${word.word}?';
+
+  void _onRight() => _narration.speak(_praise[_praiseCount++ % _praise.length]);
+
+  void _onWrong(LessonWord target) {
+    widget.progress.recordMiss(target.word);
+    _narration.speak('Try again! ${_question(target)}');
   }
 
   void _onAnswered(int stepIndex, String word) {
@@ -155,9 +200,12 @@ class _LessonScreenState extends State<LessonScreen> {
     // Completion is reaching the end, not landing on the last question —
     // the final practice step still has to be answered to get here.
     // Awaited so the celebration shows the streak *including* this one.
-    _narration.stop();
+    _nudge?.cancel();
     await widget.progress.markCompleted(widget.lesson.id);
     if (!mounted) return;
+    // Spoken from here rather than the celebration screen: this screen
+    // stays mounted underneath it, so its voice carries straight over.
+    _narration.speak('Great job! You finished ${widget.lesson.title}!');
     await Navigator.of(context).push(LessonCompleteScreen.route(
       lesson: widget.lesson,
       streak: widget.progress.streak,
@@ -169,10 +217,9 @@ class _LessonScreenState extends State<LessonScreen> {
   }
 
   void _onPageChanged(int i) {
-    _narration.stop();
     setState(() => _index = i);
     widget.progress.setLastStep(widget.lesson.id, i);
-    _speakIfPractice(_steps[i]);
+    _speakStep(i);
   }
 
   void _toggleSpeak(String text) {
@@ -243,10 +290,10 @@ class _LessonScreenState extends State<LessonScreen> {
                             choices: step.choices,
                             isSpeaking: _narration.isSpeaking,
                             onReplay: () =>
-                                _narration.speak(step.target.word),
+                                _narration.speak(_question(step.target)),
+                            onRight: _onRight,
                             onCorrect: () => _onAnswered(i, step.target.word),
-                            onWrong: () =>
-                                widget.progress.recordMiss(step.target.word),
+                            onWrong: () => _onWrong(step.target),
                           ),
                       };
                     },
@@ -398,7 +445,7 @@ class _SwipeHintState extends State<_SwipeHint>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.arrow_back_rounded, size: 20, color: color),
+          Icon(Icons.swipe_left_rounded, size: 22, color: color),
           const SizedBox(width: 6),
           Text(
             'Swipe left to keep going',
@@ -421,6 +468,7 @@ class _PracticeView extends StatefulWidget {
     required this.choices,
     required this.isSpeaking,
     required this.onReplay,
+    required this.onRight,
     required this.onCorrect,
     required this.onWrong,
   });
@@ -429,6 +477,12 @@ class _PracticeView extends StatefulWidget {
   final List<LessonWord> choices;
   final bool isSpeaking;
   final VoidCallback onReplay;
+
+  /// The moment the right card is tapped — for praise, which has to start
+  /// immediately.
+  final VoidCallback onRight;
+
+  /// After the celebration has had time to land — for moving on.
   final VoidCallback onCorrect;
   final VoidCallback onWrong;
 
@@ -446,6 +500,7 @@ class _PracticeViewState extends State<_PracticeView> {
   void _choose(LessonWord choice) {
     if (_correctSelected != null) return;
     if (choice.word == widget.target.word) {
+      widget.onRight();
       setState(() {
         _correctSelected = choice;
         _wrongTapped = null;
