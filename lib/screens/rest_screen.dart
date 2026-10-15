@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import '../data/lesson_catalog.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
@@ -146,10 +147,11 @@ class _RestScreenState extends State<RestScreen> {
               const Spacer(),
               // Small and plainly worded: a parent finds it, a child
               // doesn't mistake it for the next thing to play.
-              TextButton(
-                onPressed: _openGrownUps,
-                child: const Text('For grown-ups: unlimited energy'),
-              ),
+              if (kPaymentsLive)
+                TextButton(
+                  onPressed: _openGrownUps,
+                  child: const Text('For grown-ups: unlimited energy'),
+                ),
             ],
           ),
         ),

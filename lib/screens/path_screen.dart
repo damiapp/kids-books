@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import '../data/lesson_catalog.dart';
 import '../models/lesson.dart';
 import '../services/auth_service.dart';
@@ -347,7 +348,9 @@ class _PathScreenState extends State<PathScreen> {
                   energy: widget.energy,
                   isPremium: widget.entitlements.subscriptionActive,
                   completedCount: completedCount,
-                  onEnergyTap: () => _openGrownUps(context),
+                  onEnergyTap: kPaymentsLive
+                      ? () => _openGrownUps(context)
+                      : null,
                   onStarTap: () => _openProfile(context),
                   streak: widget.progress.streak,
                 ),
@@ -405,7 +408,7 @@ class _TopBar extends StatelessWidget {
     required this.energy,
     required this.isPremium,
     required this.completedCount,
-    required this.onEnergyTap,
+    this.onEnergyTap,
     required this.onStarTap,
     required this.streak,
   });
@@ -413,7 +416,7 @@ class _TopBar extends StatelessWidget {
   final EnergyService energy;
   final bool isPremium;
   final int completedCount;
-  final VoidCallback onEnergyTap;
+  final VoidCallback? onEnergyTap;
   final VoidCallback onStarTap;
   final int streak;
 
@@ -871,6 +874,7 @@ class _PathDrawer extends StatelessWidget {
                       style:
                           TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                   const SizedBox(height: 4),
+                  if (subscribed || kPaymentsLive)
                   Text(
                     subscribed ? 'All Access active' : 'Free plan',
                     style: TextStyle(
@@ -903,6 +907,7 @@ class _PathDrawer extends StatelessWidget {
                 onProfileTap();
               },
             ),
+            if (kPaymentsLive)
             ListTile(
               leading: Icon(subscribed
                   ? Icons.verified_rounded

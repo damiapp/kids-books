@@ -309,6 +309,12 @@ unlock + energy/subscription check.
 3. Create an **Offering** whose current package is that subscription.
 4. Copy your public Android SDK key (`goog_…`).
 
+**Subscriptions are switched off in builds by default** (`lib/config.dart`):
+while billing is a demo, nothing in the app offers one, because a release
+must never promise something it doesn't do. When the steps below are
+done, build with `--dart-define=PAYMENTS_LIVE=true` and the subscribe
+entry points come back. The demo subscriber account works either way.
+
 **Switch the app to production** — in `main.dart`, comment out the demo line and
 use:
 ```dart
