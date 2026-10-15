@@ -112,6 +112,10 @@ Tap either button on the login screen to sign in instantly, or type the
 credentials by hand. These only work for sign-in, not the "create account"
 flow, and never touch your Firebase project.
 
+They're compiled out of the store build: `--dart-define=DEMO_ACCOUNTS=false`
+(the **Release bundle** workflow sets it) removes the buttons and makes
+the demo addresses behave like any other email.
+
 ---
 
 ## 1d. Signing, so a new build installs as an update

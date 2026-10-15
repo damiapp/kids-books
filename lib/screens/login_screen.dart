@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../config.dart';
 import '../data/demo_accounts.dart';
 import '../services/auth_service.dart';
 import '../services/energy_service.dart';
@@ -193,36 +194,38 @@ class _LoginScreenState extends State<LoginScreen> {
                         : 'New here? Create an account',
                   ),
                 ),
-                const SizedBox(height: 28),
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: scheme.outlineVariant)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('or try it instantly',
-                          style: TextStyle(
-                              fontSize: 13, color: scheme.onSurfaceVariant)),
-                    ),
-                    Expanded(child: Divider(color: scheme.outlineVariant)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                for (final account in demoAccounts) ...[
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18)),
-                    ),
-                    onPressed:
-                        _isSubmitting ? null : () => _useDemoAccount(account),
-                    child: Text(
-                      account.subscriptionActive
-                          ? '👑  ${account.label}'
-                          : '🙂  ${account.label}',
-                    ),
+                if (kDemoAccounts) ...[
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: scheme.outlineVariant)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or try it instantly',
+                            style: TextStyle(
+                                fontSize: 13, color: scheme.onSurfaceVariant)),
+                      ),
+                      Expanded(child: Divider(color: scheme.outlineVariant)),
+                    ],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
+                  for (final account in demoAccounts) ...[
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18)),
+                      ),
+                      onPressed:
+                          _isSubmitting ? null : () => _useDemoAccount(account),
+                      child: Text(
+                        account.subscriptionActive
+                            ? '👑  ${account.label}'
+                            : '🙂  ${account.label}',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                 ],
               ],
             ),

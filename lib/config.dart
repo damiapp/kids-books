@@ -13,3 +13,13 @@ library;
 /// The demo subscriber account still works with this off, so unlimited
 /// energy can be tested without it.
 const bool kPaymentsLive = bool.fromEnvironment('PAYMENTS_LIVE');
+
+/// Whether the built-in demo accounts exist.
+///
+/// On for the builds tested from CI, where they're the quickest way in.
+/// Off for the build uploaded to Google Play: there, "try it instantly"
+/// buttons would confuse real parents, and a subscriber login whose
+/// password is printed in the README would be a free way past the
+/// paywall the moment payments go live.
+const bool kDemoAccounts =
+    bool.fromEnvironment('DEMO_ACCOUNTS', defaultValue: true);

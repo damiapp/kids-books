@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config.dart';
 import '../data/demo_accounts.dart';
 
 /// Wraps Firebase Authentication (email/password) so screens never touch
@@ -24,7 +25,7 @@ class AuthService extends ChangeNotifier {
   Future<void> _restoreMockSession() async {
     final prefs = await SharedPreferences.getInstance();
     final email = prefs.getString(_mockEmailKey);
-    if (email != null && demoAccountByEmail(email) != null) {
+    if (kDemoAccounts && email != null && demoAccountByEmail(email) != null) {
       _mockEmail = email;
       notifyListeners();
     }
@@ -43,7 +44,9 @@ class AuthService extends ChangeNotifier {
 
   /// Returns null on success, or a human-readable error message.
   Future<String?> signIn(String email, String password) async {
-    final demo = matchDemoAccount(email, password);
+    // Checked first so a demo login never reaches Firebase — and not at
+    // all in a store build, where these accounts don't exist.
+    final demo = kDemoAccounts ? matchDemoAccount(email, password) : null;
     if (demo != null) {
       _mockEmail = demo.email;
       final prefs = await SharedPreferences.getInstance();

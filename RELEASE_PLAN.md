@@ -17,7 +17,7 @@ shows up attached to the change that caused it.
 | ⬜ | **6. Progress follows the account.** Today everything is on the phone, so the account is friction with no benefit. Sync streak and progress to Firestore. | me, after you switch Firestore on |
 | ⬜ | **7. Crash reporting.** Otherwise a crash on someone else's phone is invisible to us. | me |
 | ⏳ | **8. Real payments.** "Subscribe" is a demo that charges nothing. Until RevenueCat and Play Billing are connected, the subscription is hidden from release builds so v1 never promises something it doesn't do. *Hidden: done — `kPaymentsLive` in `lib/config.dart`, off by default. Connecting real billing needs your Play Console and RevenueCat accounts.* | me ✅, then you |
-| ⬜ | **9. Play Console listing.** Data safety form, target audience, content rating, store text and screenshots. | I draft, you submit |
+| ⏳ | **9. Play Console listing.** Data safety form, target audience, content rating, store text and screenshots. *Drafted at `release/play-console.md`. The store build is the **Release bundle** workflow (Actions → Run workflow): a signed `.aab` with demo accounts compiled out. Needs from you: a Play developer account, a real review account, phone screenshots, and the form answers entered.* | me ✅, then you |
 | ⬜ | **10. Watch two or three children use it.** Every speed, size and picture choice so far is a guess. Nothing else on this list replaces this. | you |
 
 **One thing unblocks steps 4 and 5 together:** in the repo's Settings →
