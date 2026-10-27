@@ -79,7 +79,7 @@ Choose **"All or some functionality is restricted"** and give:
 |---|---|
 | Username | the review account's email |
 | Password | its password |
-| Notes | Sign in from the login screen with these details. No other setup is needed. The grown-up area (menu → Progress → Delete account) asks a simple number question first; the answer is shown in words on screen. |
+| Notes | Sign in from the login screen with these details. No other setup is needed. The grown-up area (menu → For grown-ups: voice speed, sign out, delete account) asks a simple number question first; the number is shown in words on screen and typed as digits. |
 
 ---
 

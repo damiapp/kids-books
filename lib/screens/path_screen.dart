@@ -10,7 +10,7 @@ import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/narration_service.dart';
 import '../services/progress_service.dart';
-import 'landing_screen.dart';
+import 'grown_ups_screen.dart';
 import 'lesson_screen.dart';
 import 'paywall_screen.dart';
 import 'rest_screen.dart';
@@ -223,9 +223,23 @@ class _PathScreenState extends State<PathScreen> {
 
   /// Every route to the paywall from a screen a child uses goes through
   /// here, so none of them is one stray tap from a payment screen.
-  Future<void> _openGrownUps(BuildContext context) async {
+  Future<void> _openSubscribeGated(BuildContext context) async {
     if (!await ParentalGate.show(context) || !context.mounted) return;
     _openSubscribe(context);
+  }
+
+  /// The account, the subscription and the voice settings — the same
+  /// parent check in front of all of them.
+  Future<void> _openGrownUps(BuildContext context) async {
+    if (!await ParentalGate.show(context) || !context.mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GrownUpsScreen(
+        progress: widget.progress,
+        energy: widget.energy,
+        entitlements: widget.entitlements,
+        auth: widget.auth,
+      ),
+    ));
   }
 
   void _openWordBank(BuildContext context) {
@@ -249,27 +263,6 @@ class _PathScreenState extends State<PathScreen> {
     Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PaywallScreen(entitlements: widget.entitlements),
     ));
-  }
-
-  // Signing in (demo or Firebase) ends with pushAndRemoveUntil to here,
-  // which clears the landing/onboarding/login stack — including the root
-  // route's auth listener that would otherwise swap back to Landing on
-  // sign-out. So sign-out has to navigate explicitly, the same way.
-  Future<void> _signOut(BuildContext context) async {
-    final navigator = Navigator.of(context);
-    await widget.auth?.signOut();
-    if (!context.mounted) return;
-    navigator.pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => LandingScreen(
-          entitlements: widget.entitlements,
-          auth: widget.auth!,
-          progress: widget.progress,
-          energy: widget.energy,
-        ),
-      ),
-      (route) => false,
-    );
   }
 
   /// One unit's stretch of trail: a node per lesson, then the trophy that
@@ -330,8 +323,7 @@ class _PathScreenState extends State<PathScreen> {
         entitlements: widget.entitlements,
         onWordBankTap: () => _openWordBank(context),
         onProfileTap: () => _openProfile(context),
-        onSubscribeTap: () => _openGrownUps(context),
-        onSignOutTap: widget.auth == null ? null : () => _signOut(context),
+        onGrownUpsTap: () => _openGrownUps(context),
       ),
       body: SafeArea(
         child: ListenableBuilder(
@@ -349,7 +341,7 @@ class _PathScreenState extends State<PathScreen> {
                   isPremium: widget.entitlements.subscriptionActive,
                   completedCount: completedCount,
                   onEnergyTap: kPaymentsLive
-                      ? () => _openGrownUps(context)
+                      ? () => _openSubscribeGated(context)
                       : null,
                   onStarTap: () => _openProfile(context),
                   streak: widget.progress.streak,
@@ -841,15 +833,13 @@ class _PathDrawer extends StatelessWidget {
     required this.entitlements,
     required this.onWordBankTap,
     required this.onProfileTap,
-    required this.onSubscribeTap,
-    this.onSignOutTap,
+    required this.onGrownUpsTap,
   });
 
   final EntitlementService entitlements;
   final VoidCallback onWordBankTap;
   final VoidCallback onProfileTap;
-  final VoidCallback onSubscribeTap;
-  final VoidCallback? onSignOutTap;
+  final VoidCallback onGrownUpsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -907,30 +897,20 @@ class _PathDrawer extends StatelessWidget {
                 onProfileTap();
               },
             ),
-            if (kPaymentsLive)
+            // Sign out, delete account, subscription and voice settings
+            // all live behind this, so nothing in the menu can lock a
+            // child out of the app or reach a payment screen.
+            const Spacer(),
+            const Divider(height: 1),
             ListTile(
-              leading: Icon(subscribed
-                  ? Icons.verified_rounded
-                  : Icons.workspace_premium_rounded),
-              title: Text(subscribed ? 'All Access' : 'Subscribe'),
+              leading: const Icon(Icons.lock_outline_rounded),
+              title: const Text('For grown-ups'),
               onTap: () {
                 Navigator.pop(context);
-                onSubscribeTap();
+                onGrownUpsTap();
               },
             ),
-            if (onSignOutTap != null) ...[
-              const Spacer(),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.logout_rounded),
-                title: const Text('Sign out'),
-                onTap: () {
-                  Navigator.pop(context);
-                  onSignOutTap!();
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+            const SizedBox(height: 8),
           ],
         ),
       ),

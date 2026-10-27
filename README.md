@@ -194,7 +194,7 @@ test/                                     catalog format, streaks, energy — ru
   services/revenuecat_entitlement_service.dart   production (Google Play Billing)
   services/energy_service.dart            energy pool: spend, regen over time
   services/progress_service.dart          steps, completion, streak, daily goal, missed words
-  services/narration_service.dart         read-aloud / practice-prompt TTS
+  services/narration_service.dart         read-aloud TTS: best installed voice, speed setting
   services/auth_service.dart              Firebase email/password sign-in
   screens/landing_screen.dart             first screen: app name + tagline
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
@@ -202,6 +202,9 @@ test/                                     catalog format, streaks, energy — ru
   screens/path_screen.dart                learning path: units + winding lesson trail
   screens/lesson_screen.dart              lesson player: swipe through learn + practice steps
   screens/profile_screen.dart             progress, daily goal, tricky words, achievements
+  screens/grown_ups_screen.dart           behind the parent check: voice speed, sign out, delete account
+  screens/rest_screen.dart                out of energy: a kind rest, not a paywall
+  widgets/parental_gate.dart              "type the number in words" check for grown-ups
   screens/word_bank_screen.dart           every word learned, tap to hear again
   screens/lesson_complete_screen.dart     the end-of-lesson celebration
   widgets/motion.dart                     shared motion: press, shake, burst, pop-in, bob, confetti

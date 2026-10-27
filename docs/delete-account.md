@@ -9,9 +9,9 @@ time.
 
 ## In the app
 
-1. Open the menu (☰) and choose **Progress**.
-2. Scroll to the bottom and tap **Delete account**.
-3. Answer the grown-up check, then confirm.
+1. Open the menu (☰) and choose **For grown-ups**.
+2. Answer the grown-up check (type the number shown in words).
+3. Tap **Delete account** at the bottom, then confirm.
 
 The account is deleted straight away. If you signed in a while ago, the
 app asks for your password once more first — that's a security check,
