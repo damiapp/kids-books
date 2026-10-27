@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/lesson.dart';
 import '../services/narration_service.dart';
@@ -171,14 +172,27 @@ class _LessonScreenState extends State<LessonScreen> {
   /// would turn half of them into nonsense.
   String _question(LessonWord word) => 'Can you find... ${word.word}?';
 
-  void _onRight() => _narration.speak(_praise[_praiseCount++ % _praise.length]);
+  void _onRight() {
+    HapticFeedback.lightImpact();
+    _narration.speak(_praise[_praiseCount++ % _praise.length]);
+  }
 
-  void _onWrong(LessonWord target) {
+  /// [misses] counts this question's wrong taps, this one included. From
+  /// the second on, the right card is shown (see [_PracticeView]) and the
+  /// voice points to it — a guessing loop teaches nothing, and a child
+  /// stuck in one gives up on the app, not the question.
+  void _onWrong(LessonWord target, int misses) {
+    HapticFeedback.selectionClick();
     widget.progress.recordMiss(target.word);
-    _narration.speak('Try again! ${_question(target)}');
+    _narration.speak(misses >= _PracticeView.hintAfter
+        ? 'Look, here it is! ${target.word}!'
+        : 'Try again! ${_question(target)}');
   }
 
   void _onAnswered(int stepIndex, String word) {
+    // Arrives on a delay, after the celebration — the lesson may have
+    // been closed in between.
+    if (!mounted) return;
     if (widget.isPractice) widget.progress.forgiveMiss(word);
     setState(() => _answered.add(stepIndex));
     _goToStep(stepIndex + 1);
@@ -222,6 +236,27 @@ class _LessonScreenState extends State<LessonScreen> {
     _speakStep(i);
   }
 
+  /// The ✕ and the Android back gesture both land here. Small children
+  /// hit both by accident all the time, mid-word, and lose the lesson
+  /// with no idea why; so leaving asks first, out loud, with "keep
+  /// playing" as the big, obvious answer. Their place is saved either
+  /// way (see [_onPageChanged]).
+  Future<void> _confirmExit() async {
+    _nudge?.cancel();
+    _narration.speak('Do you want to stop playing?');
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _ExitDialog(),
+    );
+    if (!mounted) return;
+    _narration.stop();
+    if (leave ?? false) {
+      Navigator.of(context).pop();
+    } else {
+      _speakStep(_index);
+    }
+  }
+
   void _toggleSpeak(String text) {
     if (_narration.isSpeaking) {
       _narration.stop();
@@ -232,77 +267,131 @@ class _LessonScreenState extends State<LessonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: ListenableBuilder(
-        listenable: Listenable.merge([widget.progress, _narration]),
-        builder: (context, _) {
-          return SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          _narration.stop();
-                          Navigator.of(context).pop();
-                        },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: (_index + 1) / _steps.length,
-                            minHeight: 8,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmExit();
+      },
+      child: Scaffold(
+        body: ListenableBuilder(
+          listenable: Listenable.merge([widget.progress, _narration]),
+          builder: (context, _) {
+            return SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: _confirmExit,
+                          tooltip: 'Stop',
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: (_index + 1) / _steps.length,
+                              minHeight: 8,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
+                        const SizedBox(width: 12),
+                      ],
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    // An unanswered practice step is a wall until the
-                    // right picture is tapped; everything else moves
-                    // forward only, never back.
-                    physics: _canSwipe
-                        ? _ForwardOnlyPageScrollPhysics(
-                            currentPage: () => _index)
-                        : const NeverScrollableScrollPhysics(),
-                    onPageChanged: _onPageChanged,
-                    itemCount: _steps.length,
-                    itemBuilder: (context, i) {
-                      final step = _steps[i];
-                      return switch (step) {
-                        _LearnStep() => _LearnView(
-                            word: step.word,
-                            isSpeaking: _narration.isSpeaking,
-                            onSpeak: () => _toggleSpeak(
-                                '${step.word.word}. ${step.word.text}'),
-                          ),
-                        _PracticeStep() => _PracticeView(
-                            key: ValueKey('practice-$i-${step.target.word}'),
-                            target: step.target,
-                            choices: step.choices,
-                            isSpeaking: _narration.isSpeaking,
-                            onReplay: () =>
-                                _narration.speak(_question(step.target)),
-                            onRight: _onRight,
-                            onCorrect: () => _onAnswered(i, step.target.word),
-                            onWrong: () => _onWrong(step.target),
-                          ),
-                      };
-                    },
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _controller,
+                      // An unanswered practice step is a wall until the
+                      // right picture is tapped; everything else moves
+                      // forward only, never back.
+                      physics: _canSwipe
+                          ? _ForwardOnlyPageScrollPhysics(
+                              currentPage: () => _index)
+                          : const NeverScrollableScrollPhysics(),
+                      onPageChanged: _onPageChanged,
+                      itemCount: _steps.length,
+                      itemBuilder: (context, i) {
+                        final step = _steps[i];
+                        return switch (step) {
+                          _LearnStep() => _LearnView(
+                              word: step.word,
+                              isSpeaking: _narration.isSpeaking,
+                              onSpeak: () => _toggleSpeak(
+                                  '${step.word.word}. ${step.word.text}'),
+                            ),
+                          _PracticeStep() => _PracticeView(
+                              key: ValueKey('practice-$i-${step.target.word}'),
+                              target: step.target,
+                              choices: step.choices,
+                              isSpeaking: _narration.isSpeaking,
+                              onReplay: () =>
+                                  _narration.speak(_question(step.target)),
+                              onRight: _onRight,
+                              onCorrect: () => _onAnswered(i, step.target.word),
+                              onWrong: (misses) =>
+                                  _onWrong(step.target, misses),
+                            ),
+                        };
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// "Stop playing?" — answered with pictures, since the child asked
+/// can't read the words. Keep playing is the big one on purpose.
+class _ExitDialog extends StatelessWidget {
+  const _ExitDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Stop playing?',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
             ),
-          );
-        },
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 72,
+              child: FilledButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                style: FilledButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(22)),
+                ),
+                child: const Text(
+                  '▶  Keep playing',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                '🏠  Stop',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,12 +536,16 @@ class _SwipeHintState extends State<_SwipeHint>
         children: [
           Icon(Icons.swipe_left_rounded, size: 22, color: color),
           const SizedBox(width: 6),
-          Text(
-            'Swipe left to keep going',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: color,
+          // Flexible so large system text wraps instead of overflowing.
+          Flexible(
+            child: Text(
+              'Swipe left to keep going',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ),
         ],
@@ -484,7 +577,12 @@ class _PracticeView extends StatefulWidget {
 
   /// After the celebration has had time to land — for moving on.
   final VoidCallback onCorrect;
-  final VoidCallback onWrong;
+
+  /// With the number of wrong taps on this question so far.
+  final ValueChanged<int> onWrong;
+
+  /// Wrong taps before the right card is pointed out.
+  static const hintAfter = 2;
 
   @override
   State<_PracticeView> createState() => _PracticeViewState();
@@ -495,7 +593,10 @@ class _PracticeViewState extends State<_PracticeView> {
   LessonWord? _wrongTapped;
 
   /// Bumped on every wrong tap so the same card can shake twice in a row.
+  /// Also the miss count that decides when to show the answer.
   int _wrongTaps = 0;
+
+  bool get _showHint => _wrongTaps >= _PracticeView.hintAfter;
 
   void _choose(LessonWord choice) {
     if (_correctSelected != null) return;
@@ -507,18 +608,25 @@ class _PracticeViewState extends State<_PracticeView> {
       });
       // Long enough for the burst to land before the page moves on —
       // the celebration is the point of getting it right.
-      Future.delayed(const Duration(milliseconds: 700), widget.onCorrect);
+      Future.delayed(const Duration(milliseconds: 700), () {
+        if (mounted) widget.onCorrect();
+      });
     } else {
-      widget.onWrong();
       setState(() {
         _wrongTapped = choice;
         _wrongTaps++;
       });
+      widget.onWrong(_wrongTaps);
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) setState(() => _wrongTapped = null);
       });
     }
   }
+
+  bool _isHint(LessonWord choice) =>
+      _showHint &&
+      _correctSelected == null &&
+      choice.word == widget.target.word;
 
   @override
   Widget build(BuildContext context) {
@@ -546,16 +654,23 @@ class _PracticeViewState extends State<_PracticeView> {
               crossAxisSpacing: 14,
               children: [
                 for (final choice in widget.choices)
-                  Burst(
-                    active: _correctSelected == choice,
-                    child: Shake(
-                      trigger: _wrongTapped == choice ? _wrongTaps : 0,
-                      child: Pressable(
-                        child: _ChoiceCard(
-                          word: choice,
-                          isCorrect: _correctSelected == choice,
-                          isWrong: _wrongTapped == choice,
-                          onTap: () => _choose(choice),
+                  // Bob is always there and only gets a height when the
+                  // card is the hint: adding it conditionally would
+                  // rebuild the card's subtree and cut its shake short.
+                  Bob(
+                    height: _isHint(choice) ? 6 : 0,
+                    child: Burst(
+                      active: _correctSelected == choice,
+                      child: Shake(
+                        trigger: _wrongTapped == choice ? _wrongTaps : 0,
+                        child: Pressable(
+                          child: _ChoiceCard(
+                            word: choice,
+                            isCorrect: _correctSelected == choice,
+                            isWrong: _wrongTapped == choice,
+                            isHint: _isHint(choice),
+                            onTap: () => _choose(choice),
+                          ),
                         ),
                       ),
                     ),
@@ -574,12 +689,16 @@ class _ChoiceCard extends StatelessWidget {
     required this.word,
     required this.isCorrect,
     required this.isWrong,
+    required this.isHint,
     required this.onTap,
   });
 
   final LessonWord word;
   final bool isCorrect;
   final bool isWrong;
+
+  /// The right answer, pointed out after repeated misses.
+  final bool isHint;
   final VoidCallback onTap;
 
   @override
@@ -593,7 +712,9 @@ class _ChoiceCard extends StatelessWidget {
         ? const Color(0xFF4CAF50)
         : isWrong
             ? const Color(0xFFE0637A)
-            : null;
+            : isHint
+                ? const Color(0xFFFFB300)
+                : null;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -601,7 +722,18 @@ class _ChoiceCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(24),
-        border: borderColor != null ? Border.all(color: borderColor, width: 3) : null,
+        border: borderColor != null
+            ? Border.all(color: borderColor, width: isHint ? 5 : 3)
+            : null,
+        boxShadow: isHint
+            ? const [
+                BoxShadow(
+                  color: Color(0x66FFB300),
+                  blurRadius: 18,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,

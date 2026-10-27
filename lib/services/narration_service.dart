@@ -1,5 +1,23 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// How fast the voice talks — chosen by a grown-up, since the right pace
+/// for a just-turned-three is wrong for a six-year-old.
+enum SpeechSpeed {
+  slower('Slower', 0.34),
+  normal('Normal', 0.42),
+  faster('Faster', 0.5);
+
+  const SpeechSpeed(this.label, this.rate);
+
+  final String label;
+
+  /// flutter_tts's scale, where 0.5 is the engine's own normal pace.
+  /// "Normal" here is a little under it on purpose: easier for early
+  /// learners.
+  final double rate;
+}
 
 /// Reads words, sentences and instructions aloud through the phone's own
 /// text-to-speech engine. Offline — no account, no network call, no key.
@@ -13,7 +31,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 class NarrationService extends ChangeNotifier {
   NarrationService() {
     _tts
-      ..setSpeechRate(0.42) // slower than default: easier for early learners
+      ..setSpeechRate(speed.value.rate)
       ..setPitch(1.05)
       ..setStartHandler(() => _setSpeaking(true))
       ..setCompletionHandler(() => _setSpeaking(false))
@@ -31,10 +49,39 @@ class NarrationService extends ChangeNotifier {
   /// milliseconds, and the answer can't change while the app runs.
   static Future<bool>? _setup;
 
+  /// Forgets the chosen voice. Tests need it: a Future remembers the zone
+  /// it was made in, and each widget test runs in its own fake clock, so
+  /// a setup cached by one test would answer only that test's clock.
+  @visibleForTesting
+  static void resetForTest() => _setup = null;
+
   /// Whether this phone can speak English at all — null until checked.
   /// False means the app will be silent, which for this audience means
   /// unusable, so the map shows a parent how to fix it.
   static final ValueNotifier<bool?> englishVoice = ValueNotifier(null);
+
+  /// Shared by every instance, so a change in the grown-ups screen
+  /// applies to the very next word spoken anywhere.
+  static final ValueNotifier<SpeechSpeed> speed =
+      ValueNotifier(SpeechSpeed.normal);
+
+  static const _speedKey = 'narration_speed';
+
+  /// Reads the saved speed. Called once at startup, before anything
+  /// speaks.
+  static Future<void> loadSettings() async {
+    final saved = (await SharedPreferences.getInstance()).getString(_speedKey);
+    speed.value = SpeechSpeed.values.firstWhere(
+      (s) => s.name == saved,
+      orElse: () => SpeechSpeed.normal,
+    );
+  }
+
+  static Future<void> setSpeed(SpeechSpeed value) async {
+    speed.value = value;
+    await (await SharedPreferences.getInstance())
+        .setString(_speedKey, value.name);
+  }
 
   bool get isSpeaking => _speaking;
 
@@ -47,6 +94,7 @@ class NarrationService extends ChangeNotifier {
   Future<void> speak(String text) async {
     await _ready;
     await _tts.stop();
+    await _tts.setSpeechRate(speed.value.rate);
     await _tts.speak(text);
   }
 

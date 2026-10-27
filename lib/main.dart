@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/catalog_service.dart';
 import 'services/energy_service.dart';
 import 'services/entitlement_service.dart';
+import 'services/narration_service.dart';
 import 'services/progress_service.dart';
 // import 'services/revenuecat_entitlement_service.dart'; // switch on for production
 import 'screens/landing_screen.dart';
@@ -15,6 +17,9 @@ import 'screens/path_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Every screen is laid out for a phone held upright, and a small child
+  // turning it sideways shouldn't scramble the lesson under their hands.
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -38,6 +43,7 @@ Future<void> main() async {
   await entitlements.init();
   await progress.init();
   await energy.init();
+  await NarrationService.loadSettings();
 
   // Deliberately not awaited: a newer catalog is cached for next
   // launch, never swapped in under a child mid-lesson (README §4).
