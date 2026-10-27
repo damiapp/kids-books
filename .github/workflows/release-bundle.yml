@@ -57,6 +57,8 @@ jobs:
 
       - run: python3 .github/scripts/patch_app_label.py
 
+      - run: python3 .github/scripts/patch_crashlytics.py
+
       - name: Sign with the release key
         run: |
           keystore="$RUNNER_TEMP/peekadoo-release.jks"
@@ -81,6 +83,18 @@ jobs:
             echo "::error::The bundle is not signed with the Peekadoo release key."
             exit 1
           fi
+
+      # Same gate as the APK build: without this ID the Crashlytics SDK
+      # throws at startup. A bundle keeps its resource table as protobuf,
+      # whose names are plain UTF-8, so grep can find it.
+      - name: Check the Crashlytics build ID
+        run: |
+          if ! unzip -p build/app/outputs/bundle/release/app-release.aab base/resources.pb \
+               | grep -a -q 'com.google.firebase.crashlytics.mapping_file_id'; then
+            echo "::error::No Crashlytics build ID in the bundle — the app would crash on launch."
+            exit 1
+          fi
+          echo "Crashlytics build ID present."
 
       - uses: actions/upload-artifact@v4
         with:

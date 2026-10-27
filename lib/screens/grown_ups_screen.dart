@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../services/auth_service.dart';
+import '../services/crash_reporting.dart';
 import '../services/energy_service.dart';
 import '../services/entitlement_service.dart';
 import '../services/narration_service.dart';
@@ -47,6 +48,16 @@ class _GrownUpsScreenState extends State<GrownUpsScreen> {
     await NarrationService.setSpeed(speed);
     // A sample of what the child will hear, so the choice isn't blind.
     _narration.speak('Can you find... apple?');
+  }
+
+  Future<void> _sendTestReport() async {
+    final sent = await CrashReporting.sendTest();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(sent
+          ? 'Test report saved. Close and reopen the app to send it.'
+          : 'Not sent: crash reports are off, or this is a debug build.'),
+    ));
   }
 
   /// Back to the landing page with the whole stack cleared — signing in
@@ -152,6 +163,31 @@ class _GrownUpsScreenState extends State<GrownUpsScreen> {
               onSelectionChanged: (picked) => _setSpeed(picked.single),
             ),
           ),
+          const _Heading('Privacy'),
+          Card(
+            child: ValueListenableBuilder<bool>(
+              valueListenable: CrashReporting.enabled,
+              builder: (context, on, _) => SwitchListTile(
+                title: const Text('Send crash reports'),
+                subtitle: const Text(
+                  'If the app crashes, send what went wrong — never who '
+                  'was using it — so it can be fixed.',
+                ),
+                value: on,
+                onChanged: CrashReporting.setEnabled,
+              ),
+            ),
+          ),
+          // Test builds only (the ones with demo accounts): a way to
+          // check reports reach the Firebase console without crashing.
+          if (kDemoAccounts)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: _sendTestReport,
+                child: const Text('Send a test crash report'),
+              ),
+            ),
           if (kPaymentsLive) ...[
             const _Heading('Subscription'),
             Card(

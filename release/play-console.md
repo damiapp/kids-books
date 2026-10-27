@@ -125,19 +125,25 @@ sharing. Expected result: **Everyone / PEGI 3**.
 | Type | Collected | Shared | Optional? | Purpose |
 |---|---|---|---|---|
 | Personal info → **Email address** | Yes | No | Required | Account management |
+| App info and performance → **Crash logs** | Yes | No | Users can choose | Analytics |
+| App info and performance → **Diagnostics** | Yes | No | Users can choose | Analytics |
+| Device or other IDs | Yes | No | Users can choose | Analytics |
+
+The last three are Firebase Crashlytics (crash reports). "Device or other
+IDs" is its random per-installation identifier, not a hardware or
+advertising ID. "Users can choose" because a grown-up can switch crash
+reports off (For grown-ups → Send crash reports).
 
 Everything else is **not collected**: no location, no contacts, no photos,
-no audio, no app activity, no device or advertising IDs, no crash logs
-(yet — if crash reporting is added in step 7, add *App info and
-performance → Crash logs*, collected, not shared, for analytics).
+no audio, no app activity, no advertising ID.
 
 Learning progress is stored **only on the device** and never transmitted,
 which Google Play does not count as "collected".
 
 **Before submitting, check one thing we couldn't verify from here:**
 Google publishes data-disclosure guidance for each Firebase product, for
-exactly this form. Read the Firebase Authentication entry and make sure
-nothing it lists is missing above.
+exactly this form. Read the Firebase Authentication and Crashlytics entries
+and make sure nothing they list is missing above.
 
 ---
 

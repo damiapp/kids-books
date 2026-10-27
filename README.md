@@ -177,6 +177,26 @@ from the debug defaults.
 
 ---
 
+## 1e. Crash reports (Firebase Crashlytics)
+
+Release builds report crashes to Crashlytics in the same Firebase
+project as sign-in. A report carries the error, the phone model and
+Android version — never the account email or anything about the child.
+Parents can switch it off under **For grown-ups → Send crash reports**.
+
+- **Build side.** CI adds the Crashlytics Gradle plugin to the generated
+  Android project (`.github/scripts/patch_crashlytics.py`), then checks
+  the built APK/bundle for the Crashlytics build ID. That check matters:
+  without the ID the SDK throws at startup, so the app would crash on
+  launch on every phone. A build missing it fails instead of shipping.
+- **Console side.** Open **Crashlytics** in the Firebase console once.
+  Then, in a CI test build, go to For grown-ups → **Send a test crash
+  report**, close and reopen the app, and the report shows up within a
+  few minutes. (The button isn't in the Play Store build.)
+- Java/Kotlin stack frames arrive obfuscated, because mapping-file upload
+  is off to keep the build independent of the network. Dart frames,
+  where nearly all of Peekadoo runs, are readable as they are.
+
 ## 2. What's inside
 
 ```
@@ -196,6 +216,7 @@ test/                                     catalog format, streaks, energy — ru
   services/progress_service.dart          steps, completion, streak, daily goal, missed words
   services/narration_service.dart         read-aloud TTS: best installed voice, speed setting
   services/auth_service.dart              Firebase email/password sign-in
+  services/crash_reporting.dart           Crashlytics: Flutter errors, no identity, parent off switch
   screens/landing_screen.dart             first screen: app name + tagline
   screens/onboarding_screen.dart          2-slide "what is this app" explainer
   screens/login_screen.dart               email/password sign in & sign up

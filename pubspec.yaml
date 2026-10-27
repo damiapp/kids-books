@@ -5,7 +5,7 @@ publish_to: "none"
 # MINOR when a roadmap phase ships (see README), and always bump the build
 # number (+N, after the +) on every push — that's what makes each APK
 # install as an update on a phone instead of needing an uninstall first.
-version: 0.22.1+51
+version: 0.23.0+52
 
 environment:
   sdk: ">=3.6.0 <4.0.0"
@@ -28,6 +28,7 @@ dependencies:
 
   # Read-aloud narration in the reader — device TTS, fully offline.
   flutter_tts: ^4.2.5
+  firebase_crashlytics: ^5.4.1
 
 dev_dependencies:
   flutter_test:

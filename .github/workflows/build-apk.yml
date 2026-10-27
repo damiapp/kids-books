@@ -54,6 +54,11 @@ jobs:
 
       - run: python3 .github/scripts/patch_app_label.py
 
+      # Crash reporting needs the Crashlytics Gradle plugin, which the
+      # template doesn't have (see the script, and the gate after the
+      # build for why that matters).
+      - run: python3 .github/scripts/patch_crashlytics.py
+
       # Flutter's template signs release builds with signingConfigs.debug,
       # and a runner regenerates that keystore on every run — which is why
       # every APK carried a different signature and Android refused to
@@ -92,6 +97,23 @@ jobs:
           if [ -n "$ANDROID_KEYSTORE_BASE64" ] && \
              echo "$certs" | grep -q 'CN=Android Debug'; then
             echo "::error::Signed with the stock debug certificate despite a keystore being provided — this APK will not install as an update."
+            exit 1
+          fi
+
+      # The Crashlytics SDK throws during app startup if this ID is
+      # missing, so an APK without it would crash on launch on every
+      # phone. Checked here, by looking up the exact resource the SDK
+      # asks for, rather than trusted to the patch.
+      - name: Check the Crashlytics build ID
+        run: |
+          aapt2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)
+          if [ -z "$aapt2" ]; then
+            echo "::error::aapt2 not found; can't confirm the Crashlytics build ID, and an APK without it crashes on launch."
+            exit 1
+          fi
+          if ! "$aapt2" dump resources build/app/outputs/flutter-apk/app-release.apk \
+               | grep 'crashlytics.mapping_file_id'; then
+            echo "::error::No Crashlytics build ID in the APK — it would crash on launch. Check .github/scripts/patch_crashlytics.py."
             exit 1
           fi
 

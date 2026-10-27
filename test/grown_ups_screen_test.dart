@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:peekadoo/screens/grown_ups_screen.dart';
+import 'package:peekadoo/services/crash_reporting.dart';
 import 'package:peekadoo/services/energy_service.dart';
 import 'package:peekadoo/services/entitlement_service.dart';
 import 'package:peekadoo/services/narration_service.dart';
@@ -76,5 +77,31 @@ void main() {
 
     expect(find.text('Sign out'), findsNothing);
     expect(find.text('Delete account'), findsNothing);
+  });
+
+  testWidgets('a parent can switch crash reports off, and it sticks',
+      (tester) async {
+    final progress = ProgressService();
+    await progress.init();
+    final energy = EnergyService();
+    await energy.init();
+    await CrashReporting.init();
+    expect(CrashReporting.enabled.value, isTrue, reason: 'on by default');
+
+    await tester.pumpWidget(MaterialApp(
+      home: GrownUpsScreen(
+        progress: progress,
+        energy: energy,
+        entitlements: DemoEntitlementService(),
+      ),
+    ));
+    await tester.tap(find.text('Send crash reports'));
+    await tester.pump();
+    expect(CrashReporting.enabled.value, isFalse);
+
+    // As the app would at its next launch.
+    CrashReporting.enabled.value = true;
+    await CrashReporting.init();
+    expect(CrashReporting.enabled.value, isFalse);
   });
 }

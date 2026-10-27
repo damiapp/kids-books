@@ -18,6 +18,9 @@ the app collects, why, and what you can do about it.
   us.
 - There are **no ads, no analytics and no tracking**. We don't use the
   advertising ID, and we don't sell or share anyone's data.
+- If the app **crashes**, a crash report is sent so we can fix it. It
+  says what went wrong, not who was using the app, and a grown-up can
+  switch it off.
 - You can **delete the account at any time**, from inside the app or from
   our [account deletion page](delete-account).
 
@@ -38,6 +41,16 @@ Uninstalling the app, or deleting the account from inside it, removes them.
 **Lesson content.** The app downloads new lessons from GitHub, where they
 are hosted. Like any website, GitHub receives the phone's IP address when
 it does. Nothing about the child or the account is sent.
+
+**Crash reports.** If the app crashes, it sends a report to Google's
+Firebase Crashlytics service: what went wrong in the app's code, the
+phone's model and Android version, the app version, and a random
+identifier for this installation of the app (so repeat crashes on one
+phone can be told apart from many phones crashing once). It does **not**
+include the account email, the child's progress, or anything typed or
+said. Reports are kept for 90 days. A grown-up can turn this off in the
+app under **For grown-ups → Send crash reports**; reports not yet sent
+are then deleted from the phone.
 
 **Speech.** Peekadoo reads words aloud using the phone's own text-to-speech
 engine. It chooses a voice that works offline wherever the phone has one.
@@ -75,6 +88,7 @@ cancel in the Google Play app under **Payments & subscriptions**.
 | Service | What for | What it receives |
 |---|---|---|
 | Google Firebase Authentication | Signing in | Email address, password (stored scrambled), IP address |
+| Google Firebase Crashlytics | Crash reports (can be switched off) | What went wrong, phone model and Android version, app version, a random installation identifier |
 | GitHub | Hosting lesson content | IP address |
 | Google Play and RevenueCat | Subscriptions, if you subscribe | Purchase status, an anonymous identifier |
 

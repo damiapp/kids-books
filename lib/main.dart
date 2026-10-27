@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/catalog_service.dart';
+import 'services/crash_reporting.dart';
 import 'services/energy_service.dart';
 import 'services/entitlement_service.dart';
 import 'services/narration_service.dart';
@@ -23,6 +24,8 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // First after Firebase, so anything below that fails gets reported.
+  await CrashReporting.init();
 
   // Before anything reads a lesson. Uses whatever is already on the
   // device — cached or bundled — so this never waits on a network.
